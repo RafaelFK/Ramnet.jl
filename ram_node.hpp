@@ -3,20 +3,28 @@
 
 #include <cstddef>
 #include <bitset>
+#include <vector>
+#include <numeric>
 
 namespace ramnet {
-  template<size_t input_size>
   class RAMNode {
   public:
-    void train(const std::bitset<input_size>& input) {
-      memory.set(input.to_ullong());
-    }
+    RAMNode(const size_t input_size);
+    
+    void train(const std::vector<bool>& encoded_input);
+    void train(const size_t decoded_input);
 
-    bool fire(const std::bitset<input_size>& input) const {
-      return memory[input.to_ullong()];
-    }
+    size_t size() const;
+    size_t hammingWeight() const;
+
+    bool fire(const std::vector<bool>& encoded_input) const;
+    bool fire(const size_t decoded_input) const;
+
   private:
-    std::bitset<(1 << input_size)> memory {};
+    size_t decode(const std::vector<bool> input) const;
+    
+    const size_t input_size;
+    std::vector<bool> memory;
   };
 };
 
