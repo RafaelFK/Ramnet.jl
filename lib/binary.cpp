@@ -9,4 +9,14 @@ namespace util { namespace binary {
       [](auto x, auto y) { return (x << 1) + y; }
     );
   }
+
+  std::vector<bool> encode(size_t input, const size_t length) {
+    auto bits = std::vector<bool> {};
+    bits.reserve(length);
+    
+    for(size_t i = 0; i != length; ++i)
+      bits.push_back((input >> i) %2);
+
+    return bits;
+  }
 };};

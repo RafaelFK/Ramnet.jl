@@ -10,6 +10,9 @@ namespace util { namespace binary {
 
   // Decodes a binary word into a integer
   size_t decode(const std::vector<bool> input);
+
+  // Encode a integer integer into a binary word
+  std::vector<bool> encode(const size_t input, const size_t length);
 };};
 
 #endif
