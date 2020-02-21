@@ -1,5 +1,5 @@
 #include <iostream>
-#include "ram_node.hpp"
+#include "../include/ram_node.hpp"
 
 int main() {
   ramnet::RAMNode neuron {3};
@@ -14,7 +14,7 @@ int main() {
 }
 
 int discriminator_test() {
-  // ramnet::RAMDiscriminator<8, 2> classifier;
+  // ramnet::RAMDiscriminator classifier {8, 2};
 
   // classifier.train(0b11100100);
 

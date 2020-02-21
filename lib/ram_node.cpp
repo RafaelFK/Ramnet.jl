@@ -1,4 +1,4 @@
-#include "ram_node.hpp"
+#include "../include/ram_node.hpp"
 
 namespace ramnet {
   RAMNode::RAMNode(const size_t input_size) : input_size{input_size} {
