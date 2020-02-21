@@ -6,6 +6,8 @@
 #include <vector>
 #include <numeric>
 
+#include "binary.hpp"
+
 namespace ramnet {
   class RAMNode {
   public:
@@ -21,8 +23,6 @@ namespace ramnet {
     bool fire(const size_t decoded_input) const;
 
   private:
-    size_t decode(const std::vector<bool> input) const;
-    
     const size_t input_size;
     std::vector<bool> memory;
   };

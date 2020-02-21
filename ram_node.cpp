@@ -6,7 +6,7 @@ namespace ramnet {
   }
 
   void RAMNode::train(const std::vector<bool>& encoded_input) {
-    train(decode(encoded_input));
+    train(util::binary::decode(encoded_input));
   }
 
   void RAMNode::train(const size_t decoded_input) {
@@ -25,18 +25,9 @@ namespace ramnet {
   }
 
   bool RAMNode::fire(const std::vector<bool>& encoded_input) const {
-    return fire(decode(encoded_input));
+    return fire(util::binary::decode(encoded_input));
   }
   bool RAMNode::fire(const size_t decoded_input) const {
     return memory[decoded_input];
-  }
-
-  size_t RAMNode::decode(const std::vector<bool> input) const {
-    return std::accumulate(
-      input.rbegin(),
-      input.rend(),
-      0,
-      [](auto x, auto y) { return (x << 1) + y; }
-    );
   }
 };
