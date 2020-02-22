@@ -14,34 +14,13 @@ namespace ramnet {
   public:
     // TODO: Either enforce that input_size must be a multiple of tuple_size or
     //       work around it
-    RAMDiscriminator(const size_t input_size, const size_t tuple_size)
-    : input_size{input_size}, tuple_size{tuple_size}, layer_size{input_size/tuple_size} {
-      layer.reserve(layer_size);
-      for(size_t i = 0; i != layer_size; ++i)
-        layer.emplace_back(tuple_size);
-    }
-    void train(const std::vector<bool>& input) {
-      // Map input into tuples to be feed to the neurons
-      auto tuples = getTuples(input);
+    RAMDiscriminator(const size_t input_size, const size_t tuple_size);
 
-      for (size_t i = 0; i != layer_size; ++i)
-        layer[i].train(tuples[i]);
-    }
+    void train(const std::vector<bool>& input);
+    void train(const size_t decoded_input);
 
-    void train(const size_t decoded_input) {
-      auto input = std::vector<bool> {};
-      
-    }
-
-    size_t score(const std::vector<bool>& input) {
-      size_t s = 0;
-      auto tuples = getTuples(input);
-
-      for (size_t i = 0; i != layer_size; ++i)
-        s += (size_t)layer[i].fire(tuples[i]);
-
-      return s;
-    }
+    size_t score(const std::vector<bool>& input);
+    size_t score(const size_t decoded_input);
 
   private:
     const size_t input_size;
@@ -57,18 +36,7 @@ namespace ramnet {
     //       tuple_size
     std::vector<std::vector<bool>> getTuples(
       const std::vector<bool>& input
-    ) {
-      std::vector<std::vector<bool>> tuples{layer_size};
- 
-      for(size_t i = 0; i != layer_size; ++i)
-        std::copy(
-          input.rbegin() + i*tuple_size,
-          input.rbegin() + (i+1)*tuple_size,
-          std::back_inserter(tuples[layer - i - 1])
-        );
-      
-      return tuples;
-    }
+    );
   };
 };
 
