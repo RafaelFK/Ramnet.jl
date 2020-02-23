@@ -26,8 +26,12 @@ clean:
 
 wrapper: ./wrapper/src ./wrapper/python
 	# Generating wrapper code and python module
-	swig -c++ -python -py3 -outdir ./wrapper/python -o ./wrapper/src/ram_node_wrap.cxx ./swig/*
+	swig -c++ -python -py3 -outdir ./wrapper/python -o \
+	./wrapper/src/ram_node_wrap.cxx ./swig/ram_node.i
 
+	swig -c++ -python -py3 -outdir ./wrapper/python -o \
+	./wrapper/src/ram_discriminator_wrap.cxx ./swig/ram_discriminator.i
+	
 	# Building shared library
 	python setup.py build --build-base=./wrapper/python
 
