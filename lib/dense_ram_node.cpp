@@ -2,11 +2,15 @@
 
 namespace ramnet {
   DenseRAMNode::DenseRAMNode(const size_t input_size) : input_size{input_size} {
+    if (input_size > sizeof(size_t)*8)
+      throw std::length_error {"Bit strings are limited to sizeof(size_t)*8 bits!"};
     memory.resize(1 << input_size);
   }
 
   // TODO: This could be inlined in the abstract class definition
   void DenseRAMNode::train(const std::vector<bool>& encoded_input) {
+    if (encoded_input.size() > input_size)
+      throw std::length_error {"Bit string must not exceed input_size"};
     train(util::binary::decode(encoded_input));
   }
 
@@ -28,6 +32,8 @@ namespace ramnet {
 
   // TODO: This could be inlined in the abstract class definition
   bool DenseRAMNode::fire(const std::vector<bool>& encoded_input) const {
+    if (encoded_input.size() > input_size)
+      throw std::length_error {"Bit string must not exceed input_size"};
     return fire(util::binary::decode(encoded_input));
   }
 

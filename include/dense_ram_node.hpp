@@ -5,6 +5,7 @@
 #include "binary.hpp"
 
 #include <numeric>
+#include <stdexcept>
 
 namespace ramnet {
   class DenseRAMNode: public Node {
