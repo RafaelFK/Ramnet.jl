@@ -1,9 +1,10 @@
 #include <iostream>
-#include "../include/ram_node.hpp"
+#include "../include/dense_ram_node.hpp"
+#include "../include/sparse_ram_node.hpp"
 #include "../include/ram_discriminator.hpp"
 
 int main() {
-  ramnet::DenseRAMNode neuron {3};
+  ramnet::SparseRAMNode neuron {3};
 
   std::cout << neuron.size() << std::endl;
   std::cout << "Hamming Weight: " << neuron.hammingWeight() << std::endl;

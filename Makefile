@@ -1,6 +1,6 @@
-main: ./bin/object/ ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/object/binary.o \
+main: ./bin/object/ ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/object/sparse_ram_node.o ./bin/object/binary.o \
 			./bin/object/ram_discriminator.o
-	g++ -std=gnu++14 -o ./bin/main ./bin/object/main.o ./bin/object/dense_ram_node.o \
+	g++ -std=gnu++14 -o ./bin/main ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/object/sparse_ram_node.o \
 											./bin/object/binary.o ./bin/object/ram_discriminator.o
 
 ./bin/object/:
@@ -13,10 +13,14 @@ main: ./bin/object/ ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/obje
 												 ./include/binary.hpp
 	g++ -std=gnu++14 -c -g -o ./bin/object/ram_node.o ./lib/ram_node.cpp
 
-./bin/object/dense_ram_node.o: ./lib/dense_ram_node.cpp ./include/ram_node.hpp  \
+./bin/object/dense_ram_node.o: ./lib/dense_ram_node.cpp ./include/node.hpp  \
 												 ./include/dense_ram_node.hpp ./include/binary.hpp
 	g++ -std=gnu++14 -c -g -o ./bin/object/dense_ram_node.o ./lib/dense_ram_node.cpp
 
+./bin/object/sparse_ram_node.o: ./lib/sparse_ram_node.cpp ./include/node.hpp \
+																./include/sparse_ram_node.hpp ./include/binary.hpp
+	g++ -std=gnu++14 -c -g -o ./bin/object/sparse_ram_node.o ./lib/sparse_ram_node.cpp
+	
 ./bin/object/binary.o: ./lib/binary.cpp ./include/binary.hpp
 	g++ -std=gnu++14 -c -g -o ./bin/object/binary.o ./lib/binary.cpp
 
