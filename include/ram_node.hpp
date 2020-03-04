@@ -9,6 +9,7 @@
 #include "binary.hpp"
 
 namespace ramnet {
+  template<typename RAM_T>
   class RAMNode {
   public:
     RAMNode(const size_t input_size);
@@ -24,7 +25,7 @@ namespace ramnet {
 
   private:
     const size_t input_size;
-    std::vector<bool> memory;
+    RAM_T memory;
   };
 };
 

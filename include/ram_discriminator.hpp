@@ -5,7 +5,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "ram_node.hpp"
+#include "dense_ram_node.hpp"
 
 namespace ramnet {
 
@@ -27,7 +27,7 @@ namespace ramnet {
     const size_t tuple_size;
     const size_t layer_size;
 
-    std::vector<RAMNode> layer;
+    std::vector<DenseRAMNode> layer;
 
     // Here, a linear mapping is assumed. By that, a mean that the first
     // tuple_size bits are mapped to the first neuron, the second tuple_size bits

@@ -2,8 +2,8 @@
 #include "../include/ram_node.hpp"
 #include "../include/ram_discriminator.hpp"
 
-int neuron_test() {
-  ramnet::RAMNode neuron {3};
+int main() {
+  ramnet::DenseRAMNode neuron {3};
 
   std::cout << neuron.size() << std::endl;
   std::cout << "Hamming Weight: " << neuron.hammingWeight() << std::endl;
@@ -14,7 +14,7 @@ int neuron_test() {
   std::cout << "Untrained pattern: " << neuron.fire(0b001) << std::endl;
 }
 
-int main() {
+int discriminator_test() {
   ramnet::RAMDiscriminator classifier {8, 2};
 
   classifier.train(0b11100100);
