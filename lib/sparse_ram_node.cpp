@@ -14,7 +14,7 @@ namespace ramnet {
   }
 
   size_t SparseRAMNode::size() const {
-    return (1 << input_size);
+    return ((size_t)1 << input_size);
   }
 
   size_t SparseRAMNode::hammingWeight() const {

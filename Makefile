@@ -20,7 +20,7 @@ main: ./bin/object/ ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/obje
 ./bin/object/sparse_ram_node.o: ./lib/sparse_ram_node.cpp ./include/node.hpp \
 																./include/sparse_ram_node.hpp ./include/binary.hpp
 	g++ -std=gnu++14 -c -g -o ./bin/object/sparse_ram_node.o ./lib/sparse_ram_node.cpp
-	
+
 ./bin/object/binary.o: ./lib/binary.cpp ./include/binary.hpp
 	g++ -std=gnu++14 -c -g -o ./bin/object/binary.o ./lib/binary.cpp
 
@@ -40,6 +40,12 @@ wrapper: ./wrapper/src ./wrapper/python
 	swig -c++ -python -py3 -outdir ./wrapper/python -o \
 	./wrapper/src/ram_discriminator_wrap.cxx ./swig/ram_discriminator.i
 	
+	swig -c++ -python -py3 -outdir ./wrapper/python -o \
+	./wrapper/src/dense_ram_node_wrap.cxx ./swig/dense_ram_node.i
+
+	swig -c++ -python -py3 -outdir ./wrapper/python -o \
+	./wrapper/src/sparse_ram_node_wrap.cxx ./swig/sparse_ram_node.i
+
 	# Building shared library
 	python setup.py build --build-base=./wrapper/python
 
