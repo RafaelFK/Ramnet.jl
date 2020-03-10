@@ -5,6 +5,7 @@
 #include "binary.hpp"
 
 #include <unordered_map>
+#include <stdexcept>
 
 namespace ramnet {
   class SparseRAMNode: public Node {

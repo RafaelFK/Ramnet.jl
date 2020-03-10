@@ -1,4 +1,4 @@
-#include "../include/dense_ram_node.hpp"
+#include <dense_ram_node.hpp>
 
 namespace ramnet {
   DenseRAMNode::DenseRAMNode(const size_t input_size) : input_size{input_size} {
@@ -7,7 +7,6 @@ namespace ramnet {
     memory.resize(1 << input_size);
   }
 
-  // TODO: This could be inlined in the abstract class definition
   void DenseRAMNode::train(const std::vector<bool>& encoded_input) {
     if (encoded_input.size() > input_size)
       throw std::length_error {"Bit string must not exceed input_size"};
@@ -18,9 +17,8 @@ namespace ramnet {
     memory[decoded_input] = true;
   }
 
-  size_t DenseRAMNode::size() const { return memory.size(); }
+  size_t DenseRAMNode::size() const { return ((size_t)1 << input_size); }
 
-  // TODO: This could be inlined in the abstract class definition
   size_t DenseRAMNode::hammingWeight() const {
     return std::accumulate(
       memory.begin(),

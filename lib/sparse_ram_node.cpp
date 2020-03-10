@@ -1,4 +1,4 @@
-#include "../include/sparse_ram_node.hpp"
+#include <sparse_ram_node.hpp>
 
 namespace ramnet {
   SparseRAMNode::SparseRAMNode(const size_t input_size):
@@ -6,6 +6,8 @@ namespace ramnet {
 
   // TODO: This could be inlined in the abstract class definition
   void SparseRAMNode::train(const std::vector<bool>& encoded_input) {
+    if (encoded_input.size() > input_size)
+      throw std::length_error {"Bit string must not exceed input_size"};
     train(util::binary::decode(encoded_input));
   }
 
@@ -23,6 +25,8 @@ namespace ramnet {
 
   // TODO: This could be inlined in the abstract class definition
   bool SparseRAMNode::fire(const std::vector<bool>& encoded_input) const {
+    if (encoded_input.size() > input_size)
+      throw std::length_error {"Bit string must not exceed input_size"};
     return fire(util::binary::decode(encoded_input));
   }
 

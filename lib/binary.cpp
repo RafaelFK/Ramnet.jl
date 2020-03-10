@@ -1,4 +1,4 @@
-#include "../include/binary.hpp"
+#include <binary.hpp>
 
 namespace util { namespace binary {
   size_t decode(const std::vector<bool> input) {

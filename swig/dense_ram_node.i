@@ -1,6 +1,6 @@
 %module "dense_ram_node"
 %{
-#include "../include/dense_ram_node.hpp"
+#include <dense_ram_node.hpp>
 %}
 
 %include "std_vector.i"

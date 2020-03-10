@@ -1,4 +1,4 @@
-#include "../include/ram_discriminator.hpp"
+#include <ram_discriminator.hpp>
 
 namespace ramnet {
   // TODO: Either enforce that input_size must be a multiple of tuple_size or

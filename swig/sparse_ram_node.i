@@ -1,6 +1,6 @@
 %module "sparse_ram_node"
 %{
-#include "../include/sparse_ram_node.hpp"
+#include <sparse_ram_node.hpp>
 %}
 
 %include "std_vector.i"
