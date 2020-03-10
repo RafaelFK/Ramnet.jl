@@ -1,4 +1,5 @@
 .vscode/
 bin/
-wrapper/
+wrapper/src/
+wrapper/python/ramnet/
 __pycache__/
