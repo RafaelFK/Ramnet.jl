@@ -64,7 +64,10 @@ wrapper: ./wrapper/src ./wrapper/python/ramnet/node ./wrapper/python/ramnet/mode
 	mkdir -p ./wrapper/python/ramnet/node
 	touch ./wrapper/python/ramnet/__init__.py
 	touch ./wrapper/python/ramnet/node/__init__.py
+	echo "from .dense_ram_node import DenseRAMNode" >> ./wrapper/python/ramnet/node/__init__.py 
+	echo "from .sparse_ram_node import SparseRAMNode" >> ./wrapper/python/ramnet/node/__init__.py
 
 ./wrapper/python/ramnet/model:
 	mkdir -p ./wrapper/python/ramnet/model
 	touch ./wrapper/python/ramnet/model/__init__.py
+	echo "from .ram_discriminator import RAMDiscriminator" >> ./wrapper/python/ramnet/model/__init__.py
