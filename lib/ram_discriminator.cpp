@@ -1,18 +1,23 @@
 #include <ram_discriminator.hpp>
 
 namespace ramnet {
-  // TODO: Either enforce that input_size must be a multiple of tuple_size or
-  //       work around it
   RAMDiscriminator::RAMDiscriminator(const size_t input_size, const size_t tuple_size)
   : input_size{input_size}, tuple_size{tuple_size}, layer_size{input_size/tuple_size} {
+    if ((input_size % tuple_size) != 0)
+      throw std::logic_error {"input_size must be a multiple of tuple_size"};
+
+    // Creating layer and its nodes
     layer.reserve(layer_size);
     for(size_t i = 0; i != layer_size; ++i)
       layer.emplace_back(tuple_size);
   }
 
-  void RAMDiscriminator::train(const std::vector<bool>& input) {
+  void RAMDiscriminator::train(const std::vector<bool>& encoded_input) {
+    if (encoded_input.size() > input_size)
+      throw std::length_error {"Bit string must not exceed input_size"};
+
     // Map input into tuples to be feed to the neurons
-    auto tuples = getTuples(input);
+    auto tuples = getTuples(encoded_input);
 
     for (size_t i = 0; i != layer_size; ++i)
       layer[i].train(tuples[i]);
