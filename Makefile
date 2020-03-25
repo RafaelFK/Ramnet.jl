@@ -2,9 +2,9 @@ current_dir = $(shell pwd)
 include_path = $(current_dir)/include
 
 main: ./bin/object/ ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/object/sparse_ram_node.o ./bin/object/binary.o \
-			./bin/object/ram_discriminator.o
+			./bin/object/ram_discriminator.o ./bin/object/random_mapper.o
 	g++ -std=gnu++14 -o ./bin/main -I$(include_path) ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/object/sparse_ram_node.o \
-											./bin/object/binary.o ./bin/object/ram_discriminator.o
+											./bin/object/binary.o ./bin/object/ram_discriminator.o ./bin/object/random_mapper.o
 
 ./bin/object/:
 	mkdir -p ./bin/object
@@ -30,6 +30,9 @@ main: ./bin/object/ ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/obje
 ./bin/object/ram_discriminator.o: ./lib/ram_discriminator.cpp \
 																	./include/ram_discriminator.hpp
 	g++ -std=gnu++14 -c -g -o ./bin/object/ram_discriminator.o  -I$(include_path) ./lib/ram_discriminator.cpp
+
+./bin/object/random_mapper.o: ./lib/random_mapper.cpp ./include/random_mapper.hpp
+	g++ -std=gnu++14 -c -g -o ./bin/object/random_mapper.o  -I$(include_path) ./lib/random_mapper.cpp
 
 clean:
 	rm -rf ./bin
