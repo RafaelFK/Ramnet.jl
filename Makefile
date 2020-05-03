@@ -1,10 +1,13 @@
 current_dir = $(shell pwd)
 include_path = $(current_dir)/include
 
-main: ./bin/object/ ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/object/sparse_ram_node.o ./bin/object/binary.o \
+main: ./bin/object/ ./bin/object/main.o ./bin/object/dense_ram_node.o \
+			./bin/object/sparse_ram_node.o ./bin/object/binary.o \
 			./bin/object/ram_discriminator.o ./bin/object/random_mapper.o
-	g++ -std=gnu++14 -o ./bin/main -I$(include_path) ./bin/object/main.o ./bin/object/dense_ram_node.o ./bin/object/sparse_ram_node.o \
-											./bin/object/binary.o ./bin/object/ram_discriminator.o ./bin/object/random_mapper.o
+	g++ -std=gnu++14 -o ./bin/main -I$(include_path) ./bin/object/main.o \
+			./bin/object/dense_ram_node.o ./bin/object/sparse_ram_node.o \
+			./bin/object/binary.o ./bin/object/ram_discriminator.o \
+			./bin/object/random_mapper.o
 
 ./bin/object/:
 	mkdir -p ./bin/object
