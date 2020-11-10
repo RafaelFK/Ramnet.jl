@@ -4,21 +4,25 @@ using Random
 
 export Discriminator
 
-include("Mappers.jl")
+include("Mappers/Mappers.jl")
 
 # Reexporting mappers for convenience
 using ramnet.Mappers
-export RandomMapper
+export RandomMapper, random_mapping
 
-struct Discriminator
+struct Discriminator{T <: VecOrMat{Bool}}
     address_size::Int
-    nodes::Vector{Dict{BitVector,Int8}}
+    mapper::RandomMapper
+    nodes::Vector{Dict{AbstractVector{Bool},Int8}}
 
-    function Discriminator(X::AbstractVector{<:AbstractVector{Bool}}, n::Int)
+    function Discriminator(X::T, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: VecOrMat{Bool}}
         n < 1 && throw(ArgumentError("Address size must not be less then 1"))
 
-        # Create the list of nodes
-        # In order to do that, I need to know the number of partitions
+        # Create mapper
+        # mapper = RandomMapper(X, n; seed)
+
+        # Create nodes
+
     end
 end
 
