@@ -1,0 +1,16 @@
+name = "ramnet"
+uuid = "a0efc412-9e9a-4ac4-8fe0-9333e107b410"
+authors = ["Rafael F. Katopodis <rafaelkatopodis@gmail.com> and contributors"]
+version = "0.1.0"
+
+[deps]
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[compat]
+julia = "1.5"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
