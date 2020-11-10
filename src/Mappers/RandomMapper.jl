@@ -41,6 +41,8 @@ function map(mapper::RandomMapper, X::T) where {T <: AbstractMatrix}
     return RandomMapperIterator{T}(mapper, X)
 end
 
+Base.length(mapper::RandomMapper) = length(mapper.masks)
+
 Base.length(itr::RandomMapperIterator) = length(itr.mapper.masks)
 
 Base.eltype(::Type{RandomMapperIterator{T}}) where T <: VecOrMat = T
