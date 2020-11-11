@@ -34,7 +34,7 @@ function Base.map(mapper::RandomMapper, X::T) where {T <: AbstractVector}
     return RandomMapperIterator{T}(mapper, X)
 end
 
-function map(mapper::RandomMapper, X::T) where {T <: AbstractMatrix}
+function Base.map(mapper::RandomMapper, X::T) where {T <: AbstractMatrix}
     size(X, 2) != mapper.width && throw(
       ArgumentError("Dimension mismatch in X: Expected the number of columns to be $(mapper.width), got $(size(X, 2))"))
 

@@ -2,36 +2,85 @@ module ramnet
 
 using Random
 
-export Discriminator
-
 include("Mappers/Mappers.jl")
 
 # Reexporting mappers for convenience
 using ramnet.Mappers
 export RandomMapper, random_mapping
 
-struct Discriminator
+export Discriminator, StandardDiscriminator, BitDiscriminator
+export train!, predict
+
+struct Discriminator{T <: AbstractVector{Bool}}
     address_size::Int
     mapper::RandomMapper
-    nodes::Vector{Dict{<:AbstractVector{Bool},Int8}}
+    nodes::Vector{Dict{T,Int8}}
 
     # It's better to have this type as a parameter of the struct
-    function Discriminator(input_type::Type{<:AbstractVector{Bool}}, width::Int, n::Int; seed::Union{Nothing,Int}=nothing)
+    function Discriminator{T}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: AbstractVector{Bool}}
         # Create mapper
         mapper = RandomMapper(width, n; seed)
 
         # Create nodes
-        nodes = [Dict{input_type,Int8}() for _ in 1:length(mapper)]
+        nodes = [Dict{T,Int8}() for _ in 1:length(mapper)]
 
-        new(n, mapper, nodes)
+        new{T}(n, mapper, nodes)
     end
 end
 
-# Discriminator() = Discriminator(Vector())
+const StandardDiscriminator = Discriminator{Vector{Bool}}
+const BitDiscriminator      = Discriminator{BitVector}
 
-# function train!(disc::Discriminator, )
+function train_node!(node::Dict{<:AbstractVector{Bool},Int8}, X::T) where {T <: AbstractVector{Bool}}
+    node[X] = 1
 
-# end
+    return nothing
+end
 
+function train_node!(node::Dict{<: AbstractVector{Bool},Int8}, X::T) where {T <: AbstractMatrix{Bool}}
+    for x in eachrow(X)
+        node[x] = 1
+    end
+
+    return nothing
+end
+
+function train!(d::Discriminator, X::T) where {T <: VecOrMat{Bool}}
+    # Train each node with their appropriate partition of the input
+    # according to the mapper
+    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+        train_node!(node, x)
+    end
+
+    return nothing
+end
+
+function predict_node(node::Dict{<: AbstractVector{Bool},Int8}, X::T) where {T <: AbstractVector{Bool}}
+    return get(node, X, zero(Int8))
+end
+
+function predict_node(node::Dict{<: AbstractVector{Bool},Int8}, X::T) where {T <: AbstractMatrix{Bool}}
+    return [get(node, x, zero(Int8)) for x in eachrow(X)]
+end
+
+function predict(d::Discriminator, X::T) where {T <: AbstractVector{Bool}}
+    response = zero(Int)
+
+    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+        response += predict_node(node, x)
+    end
+
+    return response
+end
+
+function predict(d::Discriminator, X::T) where {T <: AbstractMatrix{Bool}}
+    response = zeros(Int, size(X, 1))
+
+    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+        response += predict_node(node, x)
+    end
+
+    return response
+end
 
 end
