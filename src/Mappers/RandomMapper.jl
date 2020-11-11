@@ -15,7 +15,7 @@ struct RandomMapper <: Mapper
         ordering = randperm(rng, width)
         nmasks = ceil(Int, width / n)
 
-      # Could I avoid allocating the masks?
+        # Could I avoid allocating the masks?
         masks = collect(Iterators.partition(ordering, n))
 
         new(width, n, masks)

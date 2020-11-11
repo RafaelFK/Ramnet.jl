@@ -63,6 +63,7 @@ function predict_node(node::Dict{<: AbstractVector{Bool},Int8}, X::T) where {T <
     return [get(node, x, zero(Int8)) for x in eachrow(X)]
 end
 
+# TODO: Output response in relative terms? (i.e. divide by the number of nodes)
 function predict(d::Discriminator, X::T) where {T <: AbstractVector{Bool}}
     response = zero(Int)
 
