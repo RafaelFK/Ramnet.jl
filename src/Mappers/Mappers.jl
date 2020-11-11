@@ -1,7 +1,5 @@
 module Mappers
 
-using Random
-
 abstract type Mapper end
 
 include("RandomMapper.jl")
