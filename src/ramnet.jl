@@ -15,4 +15,7 @@ using ramnet.Models
 export Discriminator, StandardDiscriminator, BitDiscriminator
 export train!, predict
 
+export MultiDiscriminatorClassifier
+export train!, predict
+
 end

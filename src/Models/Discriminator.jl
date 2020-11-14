@@ -1,20 +1,24 @@
 using ..Nodes
 using ..Mappers
 
+# TODO: Allow the instantiation without the specification of width (Could be
+#       determined from the training data) 
 struct Discriminator{T <: AbstractVector{Bool}}
-    address_size::Int
+    # address_size::Int
     mapper::RandomMapper
     nodes::Vector{DictNode{T}}
 
-    function Discriminator{T}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: AbstractVector{Bool}}
-      # Create mapper
-        mapper = RandomMapper(width, n; seed)
-
-      # Create nodes
+    function Discriminator{T}(mapper::RandomMapper) where {T <: AbstractVector{Bool}}
         nodes = [DictNode{T}() for _ in 1:length(mapper)]
-
-        new{T}(n, mapper, nodes)
+        
+        new{T}(mapper, nodes)
     end
+end
+
+function Discriminator{T}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: AbstractVector{Bool}}
+    mapper = RandomMapper(width, n; seed)
+
+    Discriminator{T}(mapper)
 end
 
 const StandardDiscriminator = Discriminator{Vector{Bool}}
@@ -29,6 +33,8 @@ function train!(d::Discriminator, X::T) where {T <: VecOrMat{Bool}}
 end
 
 # TODO: Output response in relative terms? (i.e. divide by the number of nodes)
+# TODO: Can I merge this two functions into a single generic one? Most of the
+#       body is the same.
 function predict(d::Discriminator, X::T) where {T <: AbstractVector{Bool}}
     response = zero(Int)
 

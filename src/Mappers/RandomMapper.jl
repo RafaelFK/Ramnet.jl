@@ -27,6 +27,7 @@ struct RandomMapperIterator{T <: VecOrMat}
     X::T
 end
 
+# TODO: Use a DimensionMismatch exception
 function Base.map(mapper::RandomMapper, X::T) where {T <: AbstractVector}
     length(X) != mapper.width && throw(
       ArgumentError("Dimension mismatch in X: Expected its length to be $(mapper.width), got $(length(X))"))
