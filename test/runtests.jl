@@ -49,6 +49,22 @@ end
 
     inputs = vcat(reshape(all_active, (1, :)), reshape(one_off, (1, :)))
     @test predict(d, inputs) == [3, 2]
+
+    # Discriminator with externally-instantiated mapper
+    mapper   = RandomMapper(length(all_active), 3)
+    d_mapper = StandardDiscriminator(mapper)
+    train!(d_mapper, all_active)
+    @test predict(d_mapper, all_active) == 3
+
+    # One-shot instantiation and training
+    duplicated_input = reduce(vcat, map(v -> reshape(v, (1, :)), [all_active, all_active]))
+    one_shot_d_1 = StandardDiscriminator(all_active, mapper)
+    one_shot_d_2 = StandardDiscriminator(all_active, 3)
+    one_shot_d_3 = StandardDiscriminator(duplicated_input, 3)
+
+    @test predict(one_shot_d_1, all_active) == 3
+    @test predict(one_shot_d_2, all_active) == 3
+    @test predict(one_shot_d_3, all_active) == 3
 end
 
 @testset "MultiDiscriminatorClassifier" begin

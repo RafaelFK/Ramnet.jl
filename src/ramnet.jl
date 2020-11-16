@@ -4,7 +4,6 @@ using Random
 
 include("Mappers/Mappers.jl")
 
-# Reexporting mappers for convenience
 using ramnet.Mappers
 export RandomMapper, random_mapping
 
