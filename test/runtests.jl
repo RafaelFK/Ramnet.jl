@@ -4,8 +4,13 @@ using Test
 @testset "Random mapping" begin
     input_v        = Bool[1, 0, 0, 1, 0]
     input_m        = Bool[0 0 1 1 1; 1 0 0 0 0]
+
     shorter_v      = Bool[1, 0, 1]
     longer_v       = Bool[1, 1, 1, 1, 1, 0, 0, 1]
+
+    shorter_m      = Bool[1 0 1; 1 0 1]
+    longer_m       = Bool[1 1 1 1 1 0 0 1; 1 1 1 1 1 0 0 1]
+
     partition_size = 2
 
     mapper = RandomMapper(length(input_v), partition_size)
@@ -25,8 +30,10 @@ using Test
     @test length(collect(random_mapping(input_v, partition_size))) == expected_len
     @test length(collect(random_mapping(input_m, partition_size))) == expected_len
 
-    @test_throws ArgumentError map(mapper, shorter_v)
-    @test_throws ArgumentError map(mapper, longer_v)
+    @test_throws DimensionMismatch map(mapper, shorter_v)
+    @test_throws DimensionMismatch map(mapper, longer_v)
+    @test_throws DimensionMismatch map(mapper, shorter_m)
+    @test_throws DimensionMismatch map(mapper, longer_m)
 end
 
 @testset "Discriminator" begin

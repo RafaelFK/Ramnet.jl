@@ -13,16 +13,7 @@ struct MultiDiscriminatorClassifier{C}
     end
 end
 
-# TODO: Use the get! method with the default argument
 function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::C) where {T <: AbstractVector{Bool},C}       
-    # if haskey(model.discriminators, y)
-    #     train!(model.discriminators[y], X)
-    # else
-    #     # TODO: Allow the instantiation and training of a discriminator in a single shot
-    #     model.discriminators[y] = StandardDiscriminator(model.mapper)
-    #     train!(model.discriminators[y], X)
-    # end
-
     # TODO: Allow the instantiation and training of a discriminator in a single shot
     train!(get!(model.discriminators, y) do
         StandardDiscriminator(model.mapper)

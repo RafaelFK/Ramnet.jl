@@ -30,14 +30,14 @@ end
 # TODO: Use a DimensionMismatch exception
 function Base.map(mapper::RandomMapper, X::T) where {T <: AbstractVector}
     length(X) != mapper.width && throw(
-      ArgumentError("Dimension mismatch in X: Expected its length to be $(mapper.width), got $(length(X))"))
+        DimensionMismatch("Expected length of X to be $(mapper.width), got $(length(X))"))
 
     return RandomMapperIterator{T}(mapper, X)
 end
 
 function Base.map(mapper::RandomMapper, X::T) where {T <: AbstractMatrix}
     size(X, 2) != mapper.width && throw(
-      ArgumentError("Dimension mismatch in X: Expected the number of columns to be $(mapper.width), got $(size(X, 2))"))
+      DimensionMismatch("Expected the number of columns of X to be $(mapper.width), got $(size(X, 2))"))
 
     return RandomMapperIterator{T}(mapper, X)
 end
