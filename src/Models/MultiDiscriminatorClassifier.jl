@@ -19,6 +19,7 @@ function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::C) where {T <: 
     end, X)
 end
 
+# TODO: The number of rows in X must equal the length of y
 function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::AbstractVector{C}) where {T <: AbstractMatrix{Bool}, C}
     for i in eachindex(y)
         train!(model, X[i, :], y[i])
