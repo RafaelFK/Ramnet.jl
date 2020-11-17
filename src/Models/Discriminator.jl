@@ -20,7 +20,7 @@ function Discriminator{T}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) 
     Discriminator{T}(mapper)
 end
 
-function Discriminator{T}(X::U, mapper::RandomMapper) where {T <: AbstractVector{Bool},U <: VecOrMat{Bool}}
+function Discriminator{T}(X::U, mapper::RandomMapper) where {T <: AbstractVector{Bool},U <: AbstractVecOrMat{Bool}}
     d = Discriminator{T}(mapper)
 
     train!(d, X)
@@ -48,7 +48,7 @@ end
 const StandardDiscriminator = Discriminator{Vector{Bool}}
 const BitDiscriminator      = Discriminator{BitVector}
 
-function train!(d::Discriminator, X::T) where {T <: VecOrMat{Bool}}
+function train!(d::Discriminator, X::T) where {T <: AbstractVecOrMat{Bool}}
     for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
         Nodes.train!(node, x)
     end

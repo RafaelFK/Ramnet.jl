@@ -75,14 +75,22 @@ end
     X = reduce(vcat, map(v -> reshape(v, (1, :)), [all_active, all_inactive]))
     y = String["On", "Off"]
 
-    model = MultiDiscriminatorClassifier{String}(9, 3)
+    # Training with single inputs
+    model_1 = MultiDiscriminatorClassifier{String}(9, 3)
 
-    train!(model, all_active, "On")
-    train!(model, all_inactive, "Off")
+    train!(model_1, all_active, "On")
+    train!(model_1, all_inactive, "Off")
 
-    @test predict(model, all_active) == "On"
-    @test predict(model, all_inactive) == "Off"
+    @test predict(model_1, all_active) == "On"
+    @test predict(model_1, all_inactive) == "Off"
 
+    # Training with multiple inputs
+    model_2 = MultiDiscriminatorClassifier{String}(9, 3)
+
+    train!(model_2, X, y)
+
+    @test predict(model_2, X) == ["On", "Off"]
+    
     # train!(model, X, y)
 
     # @test predict(model, all_active) == "On"

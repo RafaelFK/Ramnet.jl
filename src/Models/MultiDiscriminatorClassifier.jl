@@ -13,11 +13,16 @@ struct MultiDiscriminatorClassifier{C}
     end
 end
 
-function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::C) where {T <: AbstractVector{Bool},C}       
-    # TODO: Allow the instantiation and training of a discriminator in a single shot
+function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::C) where {T <: AbstractVector{Bool}, C}
     train!(get!(model.discriminators, y) do
         StandardDiscriminator(model.mapper)
     end, X)
+end
+
+function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::AbstractVector{C}) where {T <: AbstractMatrix{Bool}, C}
+    for i in eachindex(y)
+        train!(model, X[i, :], y[i])
+    end
 end
 
 # TODO: Check if model was trained
@@ -35,4 +40,8 @@ function predict(model::MultiDiscriminatorClassifier{C}, X::T) where {T <: Abstr
     end
 
     return best_category
+end
+
+function predict(model::MultiDiscriminatorClassifier{C}, X::AbstractMatrix{Bool}) where {C}
+    return C[predict(model, row) for row in eachrow(X)]
 end

@@ -22,7 +22,7 @@ struct RandomMapper <: Mapper
     end
 end
 
-struct RandomMapperIterator{T <: VecOrMat}
+struct RandomMapperIterator{T <: AbstractVecOrMat}
     mapper::RandomMapper
     X::T
 end
@@ -45,7 +45,7 @@ Base.length(mapper::RandomMapper) = length(mapper.masks)
 
 Base.length(itr::RandomMapperIterator) = length(itr.mapper.masks)
 
-Base.eltype(::Type{RandomMapperIterator{T}}) where T <: VecOrMat = T
+Base.eltype(::Type{RandomMapperIterator{T}}) where T <: AbstractVecOrMat = T
 
 function Base.iterate(itr::RandomMapperIterator{<:AbstractVector}, state=1)
     state > length(itr.mapper.masks) && return nothing
