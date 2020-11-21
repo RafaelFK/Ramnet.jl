@@ -57,7 +57,7 @@ end
     @test predict(d_mapper, all_active) == 3
 
     # One-shot instantiation and training
-    duplicated_input = reduce(vcat, map(v -> reshape(v, (1, :)), [all_active, all_active]))
+    duplicated_input = mapreduce(permutedims, vcat, [all_active, all_active])
     one_shot_d_1 = StandardDiscriminator(all_active, mapper)
     one_shot_d_2 = StandardDiscriminator(all_active, 3)
     one_shot_d_3 = StandardDiscriminator(duplicated_input, 3)
@@ -72,7 +72,7 @@ end
     all_inactive = zeros(Bool, 9)
     
     # TODO: Make a Utils module with a stack function?
-    X = reduce(vcat, map(v -> reshape(v, (1, :)), [all_active, all_inactive]))
+    X = mapreduce(permutedims, vcat, [all_active, all_inactive])
     y = String["On", "Off"]
 
     # Training with single inputs
