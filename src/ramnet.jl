@@ -1,6 +1,9 @@
 module ramnet
 
+# TODO: Should this be here?
 using Random
+
+include("Utils.jl")
 
 include("Mappers/Mappers.jl")
 
