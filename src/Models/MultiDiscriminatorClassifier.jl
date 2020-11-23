@@ -1,7 +1,12 @@
 # TODO: Allow the instantiation without the specification of width (Could be
 #       determined from the training data)
 # TODO: Check how other classification models handle the target type. Should I 
-#       simply enforce it to be an integer?
+#       simply enforce it to be an integer? Furthermore, a may consider enforcing
+#       targets to be in the range [1, nclasses]. These could be label encoded
+#       by the user or the model could detect and perform the encoding. If I did
+#       this, `discriminators` could simply be a list, with the discriminator's
+#       indices being the target they are associated to. `predict_response` return
+#       would also be simplified to a vector or matrix
 struct MultiDiscriminatorClassifier{C}
     mapper::RandomMapper
     discriminators::Dict{C,StandardDiscriminator}
@@ -21,6 +26,9 @@ end
 
 # TODO: The number of rows in X must equal the length of y
 function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::AbstractVector{C}) where {T <: AbstractMatrix{Bool}, C}
+    # I could create all necessary discriminators upfront, which could lead to a gain in performance. On the other hand, 
+    # the current design fits quite nicely with the repetitive training that is common in RL.
+    
     for i in eachindex(y)
         train!(model, X[i, :], y[i])
     end
@@ -45,4 +53,8 @@ end
 
 function predict(model::MultiDiscriminatorClassifier{C}, X::AbstractMatrix{Bool}) where {C}
     return C[predict(model, row) for row in eachrow(X)]
+end
+
+function predict_response(model::MultiDiscriminatorClassifier{C}, X::T) where {T <: AbstractVecOrMat{Bool},C}
+    Dict(k => predict(d, X) for (k,d) in model.discriminators)
 end

@@ -18,6 +18,6 @@ export Discriminator, StandardDiscriminator, BitDiscriminator
 export train!, predict
 
 export MultiDiscriminatorClassifier
-export train!, predict
+export train!, predict, predict_response
 
 end

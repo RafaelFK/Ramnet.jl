@@ -14,7 +14,9 @@ using ramnet.Utils: stack
     train!(model_1, all_inactive, "Off")
 
     @test predict(model_1, all_active) == "On"
+    @test predict_response(model_1, all_active) == Dict("On" => 3, "Off" => 0)
     @test predict(model_1, all_inactive) == "Off"
+    @test predict_response(model_1, all_inactive) == Dict("On" => 0, "Off" => 3)
 
     # Training with multiple inputs
     model_2 = MultiDiscriminatorClassifier{String}(9, 3)
@@ -22,6 +24,8 @@ using ramnet.Utils: stack
     train!(model_2, X, y)
 
     @test predict(model_2, X) == ["On", "Off"]
+    @test predict_response(model_2, X) == Dict("On" => [3,0], "Off" => [0,3])
+
 
     # Future tests:
     # - predict over model trained on a single pattern
