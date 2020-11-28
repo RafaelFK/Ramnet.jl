@@ -2,19 +2,29 @@ module Utils
 
 export stack, ambiguity
 
-# TODO: Abstract away the length check
-function stack(inputs::AbstractVector...)
+# function check_length_consistency(input::AbstractVector) end
+
+function check_length_consistency(inputs::AbstractVector...)
     if any(!=(length(first(inputs))), map(length, inputs))
         throw(DimensionMismatch("Input vectors should have the same length!"))
     end
+end
+
+function check_length_consistency(inputs::AbstractMatrix...)
+    if any(!=(size(first(inputs))[2]), map(i -> size(i)[2], inputs))
+        throw(DimensionMismatch("Input vectors should have the same length!"))
+    end
+end
+
+# TODO: Abstract away the length check
+function stack(inputs::AbstractVector...)
+    check_length_consistency(inputs...)
 
     mapreduce(permutedims, vcat, inputs)
 end
 
 function stack(inputs::AbstractMatrix...)
-    if any(!=(size(first(inputs))[2]), map(i -> size(i)[2], inputs))
-        throw(DimensionMismatch("Input vectors should have the same length!"))
-    end
+    check_length_consistency(inputs...)
 
     reduce(vcat, inputs)
 end
@@ -22,7 +32,9 @@ end
 # TODO: Vectors must have the same length
 # TODO: Untested
 function accuracy(y_predict::AbstractVector{T}, y_actual::AbstractVector{T}) where {T}
-    sum(y_pred .== y_target) / length(y_pred)
+    check_length_consistency(y_predict, y_actual)
+
+    sum(y_predict .== y_actual) / length(y_predict)
 end
 
 function hasdraw(X::Tuple)

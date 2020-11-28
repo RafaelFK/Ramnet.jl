@@ -1,3 +1,5 @@
+# TODO: Consider other concept for the names here instead of mapping (ex. partitioning)
+
 using Random
 
 struct RandomMapper <: Mapper
