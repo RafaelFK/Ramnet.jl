@@ -28,17 +28,8 @@ function Discriminator{T}(X::U, mapper::RandomMapper) where {T <: AbstractVector
     return d
 end
 
-# TODO: Can I merge the next two constructors into a single generic one?
-function Discriminator{T}(X::U, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: AbstractVector{Bool},U <: AbstractVector{Bool}}
-    d = Discriminator{T}(length(X), n; seed)
-
-    train!(d, X)
-
-    return d
-end
-
-function Discriminator{T}(X::U, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: AbstractVector{Bool},U <: AbstractMatrix{Bool}}
-    d = Discriminator{T}(size(X, 2), n; seed)
+function Discriminator{T}(X::U, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: AbstractVector{Bool},U <: AbstractVecOrMat{Bool}}
+    d = Discriminator{T}(size(X)[end], n; seed)
 
     train!(d, X)
 

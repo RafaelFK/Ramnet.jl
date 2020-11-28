@@ -26,6 +26,10 @@ using ramnet.Utils: stack
     @test predict(model_2, X) == ["On", "Off"]
     @test predict_response(model_2, X) == Dict("On" => [3,0], "Off" => [0,3])
 
+    # Dimensions must match when training with multiple inputs
+    model_3 = MultiDiscriminatorClassifier{String}(9, 3)
+
+    @test_throws DimensionMismatch train!(model_3, X, ["On"])
 
     # Future tests:
     # - predict over model trained on a single pattern

@@ -26,6 +26,9 @@ end
 
 # TODO: The number of rows in X must equal the length of y
 function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::AbstractVector{C}) where {T <: AbstractMatrix{Bool}, C}
+    size(X, 1) != size(y, 1) && throw(
+        DimensionMismatch("Number of observations (rows in X) must match the number of targets (elements in y)"))
+        
     # I could create all necessary discriminators upfront, which could lead to a gain in performance. On the other hand, 
     # the current design fits quite nicely with the repetitive training that is common in RL.
     
