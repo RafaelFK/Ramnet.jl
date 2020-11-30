@@ -7,7 +7,7 @@
 #       this, `discriminators` could simply be a list, with the discriminator's
 #       indices being the target they are associated to. `predict_response` return
 #       would also be simplified to a vector or matrix
-struct MultiDiscriminatorClassifier{C}
+struct MultiDiscriminatorClassifier{C} <: AbstractModel
     mapper::RandomMapper
     discriminators::Dict{C,StandardDiscriminator}
 

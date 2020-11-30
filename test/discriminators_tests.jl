@@ -1,7 +1,7 @@
 using ramnet.Utils: stack
 using ramnet.Mappers: RandomMapper
 using ramnet.Models: train!, predict
-using ramnet.Models: StandardDiscriminator
+using ramnet.Models: StandardDiscriminator, BleachingDiscriminator
 
 @testset "Discriminator" begin
     all_active = ones(Bool, 9)
@@ -32,4 +32,21 @@ using ramnet.Models: StandardDiscriminator
     @test predict(one_shot_d_1, all_active) == 3
     @test predict(one_shot_d_2, all_active) == 3
     @test predict(one_shot_d_3, all_active) == 3
+
+    # Discriminators with bleaching
+    b_d = BleachingDiscriminator(length(all_active), 3)
+
+    train!(b_d, all_active)
+
+    @test predict(b_d, all_active) == 3
+    @test predict(b_d, one_off) == 2
+
+    @test predict(b_d, all_active; b=1) == 0
+    @test predict(b_d, one_off; b=1) == 0
+
+    train!(b_d, one_off)
+
+    @test predict(b_d, one_off) == 3
+    @test predict(b_d, all_active; b=1) == 2
+    @test predict(b_d, one_off; b=1) == 2
 end

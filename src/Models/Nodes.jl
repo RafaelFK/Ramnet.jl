@@ -1,11 +1,11 @@
 module Nodes
 
-import ..train!, ..predict
+import ..AbstractModel, ..train!, ..predict
 
-export DictNode, AccNode
+export AbstractNode, DictNode, AccNode
 
 # TODO: There is nothing preventing different sized inputs
-abstract type Node end
+abstract type AbstractNode <: AbstractModel end
 
 # If both BitVectors and BoolVectors hash to the same value when they have the same
 # content, does it matter which type I choose as key for the underlying dictionary?
@@ -13,7 +13,7 @@ abstract type Node end
 # instance of AbstractVector{Bool}. If that's the case, I should get rid of the 
 # type parameter and enforce the use of one of the types. Does it matter which one
 # I choose? Is there an impact in performance and/or memory usage?
-struct DictNode{K <: AbstractVector{Bool}} <: Node
+struct DictNode{K <: AbstractVector{Bool}} <: AbstractNode
     dict::Dict{K,Int8}
 end
 
@@ -40,7 +40,7 @@ end
 
 
 ################################################################################
-struct AccNode <: Node
+struct AccNode <: AbstractNode
     acc::Dict{Vector{Bool},Int64}
 end
 
