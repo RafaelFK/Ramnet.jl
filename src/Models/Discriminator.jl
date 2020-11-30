@@ -78,7 +78,10 @@ function predict(d::Discriminator, X::T) where {T <: AbstractMatrix{Bool}}
     return response
 end
 
-# I should be able to avoid all this replication
+# I should be able to avoid all this replication. Should I just make the 
+# bleaching threshold available to all discriminator types? The problem is that
+# with discriminators that use DictNode, any value for b other than 0 doesn't
+# make sense
 function predict(d::BleachingDiscriminator, X::T; b=0) where {T <: AbstractVector{Bool}}
     response = zero(Int)
 

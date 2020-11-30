@@ -40,7 +40,11 @@ using ramnet.Models: MultiDiscriminatorClassifier, BleachingDiscriminator
 
     @test predict(model_b, X) == ["On", "Off"]
     @test predict_response(model_b, X) == Dict("On" => [3,0], "Off" => [0,3])
+    @test predict_response(model_b, X; b=1) == Dict("On" => [0, 0], "Off" => [0, 0])
 
+    train!(model_b, all_active, "On")
+
+    @test predict_response(model_b, X; b=1) ==  Dict("On" => [3, 0], "Off" => [0, 0])
     # Future tests:
     # - predict over model trained on a single pattern
     # - predict over a model that hasn't been trained at all

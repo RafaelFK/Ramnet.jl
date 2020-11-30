@@ -64,3 +64,28 @@ end
 function predict_response(model::MultiDiscriminatorClassifier{C}, X::T) where {T <: AbstractVecOrMat{Bool},C}
     Dict(k => predict(d, X) for (k,d) in model.discriminators)
 end
+
+# Once again, a should be able to avoid this replication
+function predict(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T; b=0) where {T <: AbstractVector{Bool},C}
+    largest_response = -1
+    best_category = first(keys(model.discriminators))
+
+    for (category, discriminator) in model.discriminators
+        response = predict(discriminator, X; b)
+
+        if response > largest_response
+            largest_response = response
+            best_category = category
+        end
+    end
+
+    return best_category
+end
+
+function predict(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::AbstractMatrix{Bool}; b=0) where {C}
+    return C[predict(model, row; b) for row in eachrow(X)]
+end
+
+function predict_response(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T; b=0) where {T <: AbstractVecOrMat{Bool},C}
+    Dict(k => predict(d, X; b) for (k,d) in model.discriminators)
+end
