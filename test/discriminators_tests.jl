@@ -1,4 +1,7 @@
 using ramnet.Utils: stack
+using ramnet.Mappers: RandomMapper
+using ramnet.Models: train!, predict
+using ramnet.Models: StandardDiscriminator
 
 @testset "Discriminator" begin
     all_active = ones(Bool, 9)

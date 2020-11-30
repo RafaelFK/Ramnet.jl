@@ -1,3 +1,5 @@
+using ramnet.Mappers: RandomMapper, random_mapping
+
 @testset "Random mapping" begin
     input_v        = Bool[1, 0, 0, 1, 0]
     input_m        = Bool[0 0 1 1 1; 1 0 0 0 0]

@@ -1,4 +1,6 @@
 using ramnet.Utils: stack
+using ramnet.Models: train!, predict, predict_response
+using ramnet.Models: MultiDiscriminatorClassifier
 
 @testset "MultiDiscriminatorClassifier" begin
     all_active   = ones(Bool, 9)

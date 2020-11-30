@@ -1,7 +1,10 @@
 module Nodes
 
-export DictNode, train!, predict
+import ..train!, ..predict
 
+export DictNode, AccNode
+
+# TODO: There is nothing preventing different sized inputs
 abstract type Node end
 
 # If both BitVectors and BoolVectors hash to the same value when they have the same
@@ -26,12 +29,41 @@ function train!(node::DictNode, X::T) where {T <: AbstractMatrix{Bool}}
     end
 end
 
+# Would it make sense for the prediction to be binary as well?
 function predict(node::DictNode, X::T) where {T <: AbstractVector{Bool}}
     return get(node.dict, X, zero(Int8))
 end
 
 function predict(node::DictNode, X::T) where {T <: AbstractMatrix{Bool}}
     return [get(node.dict, x, zero(Int8)) for x in eachrow(X)]
+end
+
+
+################################################################################
+struct AccNode <: Node
+    acc::Dict{Vector{Bool},Int64}
+end
+
+AccNode() = AccNode(Dict{Vector{Bool},Int64}())
+
+function train!(node::AccNode, X::T) where {T <: AbstractVector{Bool}}
+    node.acc[X] = get(node.acc, X, 0) + 1
+
+    nothing
+end
+
+function train!(node::AccNode, X::T) where {T <: AbstractMatrix{Bool}}
+    for x in eachrow(X)
+        train!(node, x)
+    end
+end
+
+function predict(node::AccNode, X::T; b::Int=0) where {T <: AbstractVector{Bool}}
+    get(node.acc, X, 0) > b
+end
+
+function predict(node::AccNode, X::T; b::Int=0) where {T <: AbstractMatrix{Bool}}
+    return [predict(node, x; b) for x in eachrow(X)]
 end
 
 end

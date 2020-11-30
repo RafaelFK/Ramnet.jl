@@ -1,4 +1,4 @@
-using ..Nodes
+using .Nodes
 using ..Mappers
 
 # TODO: Allow the instantiation without the specification of width (Could be
