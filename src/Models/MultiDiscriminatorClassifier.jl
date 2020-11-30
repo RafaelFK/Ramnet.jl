@@ -9,18 +9,18 @@
 #       would also be simplified to a vector or matrix
 struct MultiDiscriminatorClassifier{C} <: AbstractModel
     mapper::RandomMapper
-    discriminators::Dict{C,StandardDiscriminator}
+    discriminators::Dict{C,Discriminator}
 
     function MultiDiscriminatorClassifier{C}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) where C
         mapper = RandomMapper(width, n; seed)
 
-        new{C}(mapper, Dict{C,StandardDiscriminator}())
+        new{C}(mapper, Dict{C,Discriminator}())
     end
 end
 
 function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::C) where {T <: AbstractVector{Bool}, C}
     train!(get!(model.discriminators, y) do
-        StandardDiscriminator(model.mapper)
+        Discriminator(model.mapper)
     end, X)
 end
 

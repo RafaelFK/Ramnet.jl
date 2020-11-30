@@ -19,6 +19,8 @@ end
 
 DictNode{T}() where {T <: AbstractVector{Bool}} = DictNode{T}(Dict{T,Int8}())
 
+DictNode() = DictNode{Vector{Bool}}()
+
 function train!(node::DictNode, X::T) where {T <: AbstractVector{Bool}}
     node.dict[X] = 1
 end

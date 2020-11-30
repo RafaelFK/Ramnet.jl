@@ -36,6 +36,9 @@ function Discriminator{T}(X::U, n::Int; seed::Union{Nothing,Int}=nothing) where 
     return d
 end
 
+# Default node is DictNode
+Discriminator(args...; kargs...) = Discriminator{DictNode}(args...; kargs...)
+
 const StandardDiscriminator  = Discriminator{DictNode{Vector{Bool}}}
 const BitDiscriminator       = Discriminator{DictNode{BitVector}}
 const BleachingDiscriminator = Discriminator{AccNode}

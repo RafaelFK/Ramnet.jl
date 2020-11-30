@@ -8,7 +8,7 @@ using ramnet.Utils: stack
     all_active   = ones(Bool, 9)
     all_inactive = zeros(Bool, 9)
 
-    std_n = DictNode{Vector{Bool}}()
+    std_n = DictNode()
 
     train!(std_n, all_active)
 
