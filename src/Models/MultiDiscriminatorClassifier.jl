@@ -7,24 +7,27 @@
 #       this, `discriminators` could simply be a list, with the discriminator's
 #       indices being the target they are associated to. `predict_response` return
 #       would also be simplified to a vector or matrix
-struct MultiDiscriminatorClassifier{C} <: AbstractModel
+struct MultiDiscriminatorClassifier{C, N <: Discriminator} <: AbstractModel
     mapper::RandomMapper
-    discriminators::Dict{C,Discriminator}
+    discriminators::Dict{C,N}
 
-    function MultiDiscriminatorClassifier{C}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) where C
+    function MultiDiscriminatorClassifier{C,N}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) where {C,N<:Discriminator}
         mapper = RandomMapper(width, n; seed)
 
-        new{C}(mapper, Dict{C,Discriminator}())
+        new{C,N}(mapper, Dict{C,N}())
     end
 end
 
-function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::C) where {T <: AbstractVector{Bool}, C}
+# Default discriminator type is Discriminator
+MultiDiscriminatorClassifier{C}(args...; kargs...) where C = 
+    MultiDiscriminatorClassifier{C,Discriminator}(args...; kargs...)
+
+function train!(model::MultiDiscriminatorClassifier{C,N}, X::T, y::C) where {T <: AbstractVector{Bool}, C, N <: Discriminator}
     train!(get!(model.discriminators, y) do
-        Discriminator(model.mapper)
+        N(model.mapper)
     end, X)
 end
 
-# TODO: The number of rows in X must equal the length of y
 function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::AbstractVector{C}) where {T <: AbstractMatrix{Bool}, C}
     size(X, 1) != size(y, 1) && throw(
         DimensionMismatch("Number of observations (rows in X) must match the number of targets (elements in y)"))

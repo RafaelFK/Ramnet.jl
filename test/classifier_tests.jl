@@ -1,6 +1,6 @@
 using ramnet.Utils: stack
 using ramnet.Models: train!, predict, predict_response
-using ramnet.Models: MultiDiscriminatorClassifier
+using ramnet.Models: MultiDiscriminatorClassifier, BleachingDiscriminator
 
 @testset "MultiDiscriminatorClassifier" begin
     all_active   = ones(Bool, 9)
@@ -32,6 +32,14 @@ using ramnet.Models: MultiDiscriminatorClassifier
     model_3 = MultiDiscriminatorClassifier{String}(9, 3)
 
     @test_throws DimensionMismatch train!(model_3, X, ["On"])
+
+    ## Classifiers with nodes that support bleaching
+    model_b = MultiDiscriminatorClassifier{String,BleachingDiscriminator}(9, 3)
+
+    train!(model_b, X, y)
+
+    @test predict(model_b, X) == ["On", "Off"]
+    @test predict_response(model_b, X) == Dict("On" => [3,0], "Off" => [0,3])
 
     # Future tests:
     # - predict over model trained on a single pattern

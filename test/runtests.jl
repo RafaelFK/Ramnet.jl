@@ -8,4 +8,4 @@ include("nodes_tests.jl")
 
 include("discriminators_tests.jl")
 
-include("multidiscriminatorclassifier_tests.jl")
+include("classifier_tests.jl")
