@@ -2,6 +2,8 @@ module ramnet
 
 include("Utils.jl")
 
+include("Encoders/Encoders.jl")
+
 include("Mappers/Mappers.jl")
 
 using ramnet.Mappers
