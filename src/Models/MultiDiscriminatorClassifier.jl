@@ -89,3 +89,45 @@ end
 function predict_response(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T; b=0) where {T <: AbstractVecOrMat{Bool},C}
     Dict(k => predict(d, X; b) for (k,d) in model.discriminators)
 end
+
+function response_tie(responses)
+    # Single-value vector cannot have a tie
+    length(responses) == 1 && return false
+
+    p = sortperm(responses; rev=true)
+
+    # Check if the two largest responses are the same
+    return responses[p[1]] == responses[p[2]]
+end
+
+# Prediction with linear search for the bleaching threshold
+function predict_bleached_response(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T) where {T <: AbstractVector{Bool},C}
+    b = 0
+    responses = predict_response(model, X; b)
+
+    while true
+        response_values = collect(values(responses))
+
+        if all(isequal(0), response_values) || !response_tie(response_values)
+            return responses
+        end
+
+        b += 1
+        responses = predict_response(model, X; b)
+    end
+end
+
+function predict_bleached(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T) where {T <: AbstractVector{Bool},C}
+    responses = predict_bleached_response(model, X)
+
+    if all(isequal(0), values(responses))
+        return rand(keys(responses))
+    else
+        return argmax(responses)
+    end
+end
+
+# This is identical to other matrix-predicts. Maybe this could already be provided by the model interface
+function predict_bleached(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T) where {T <: AbstractMatrix{Bool},C}
+    return C[predict_bleached(model, row) for row in eachrow(X)]
+end

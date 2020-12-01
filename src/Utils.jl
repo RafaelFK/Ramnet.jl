@@ -16,7 +16,7 @@ function check_length_consistency(inputs::AbstractMatrix...)
     end
 end
 
-# TODO: Abstract away the length check
+# TODO: Consider renaming it to stack_rows
 function stack(inputs::AbstractVector...)
     check_length_consistency(inputs...)
 
