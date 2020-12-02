@@ -65,8 +65,26 @@ function encode!(encoder::Thermometer, x::AbstractVector{T}, pattern::AbstractMa
     pattern
 end
 
-function encode(encoder::Thermometer, x::AbstractVector{T}) where {T <: Real}
-    pattern = Matrix{Bool}(undef, encoder.resolution, length(x))
+# Untested
+# Flat version. All values in the input vector are encoded and placed in a single output vector
+function encode!(encoder::Thermometer, x::AbstractVector{T}, pattern::AbstractVector{Bool}) where {T <: Real}
+    length(pattern) != length(x) * encoder.resolution && throw(
+        DimensionMismatch(
+          "the length of the output pattern must equal the thermometer's resolution times the length of x"))
+
+    for (i, slice) in Iterators.enumerate(Iterators.partition(pattern, encoder.resolution))
+        encode!(encoder, x[i], slice)
+    end
+
+    pattern
+end
+
+function encode(encoder::Thermometer, x::AbstractVector{T}; flat=true) where {T <: Real}
+    if flat
+        pattern = Vector{Bool}(undef, encoder.resolution * length(x))
+    else
+        pattern = Matrix{Bool}(undef, encoder.resolution, length(x))
+    end
 
     encode!(encoder, x, pattern)
 end
@@ -91,8 +109,30 @@ function encode!(encoder::Thermometer, X::AbstractMatrix{T}, pattern::AbstractAr
     pattern
 end
 
-function encode(encoder::Thermometer, X::AbstractMatrix{T}) where {T <: Real}
-    pattern = Array{Bool,3}(undef, encoder.resolution, size(X, 2), size(X, 1))
+# Untested
+# Flat version. All values in each row of the input matrix are encoded and placed in a single row of the output matrix
+function encode!(encoder::Thermometer, X::AbstractMatrix{T}, pattern::AbstractMatrix{Bool}) where {T <: Real}
+    size(pattern, 1) != size(X, 1) && throw(
+      DimensionMismatch(
+        "the number of rows of the output pattern must equal the the number of rows of X"))
+
+    size(pattern, 2) != size(X, 2) * encoder.resolution && throw(
+        DimensionMismatch(
+            "the number of columns of the output pattern must equal the thermometer's resolution times X's number of columns"))
+
+    for (slice, row) in Iterators.zip(eachrow(pattern), eachrow(X))
+        encode!(encoder, row, slice)
+    end
+
+    pattern
+end
+
+function encode(encoder::Thermometer, X::AbstractMatrix{T}; flat=true) where {T <: Real}
+    if flat
+        pattern = Matrix{Bool}(undef, size(X, 1), encoder.resolution * size(X, 2))
+    else
+        pattern = Array{Bool,3}(undef, encoder.resolution, size(X, 2), size(X, 1))
+    end
 
     encode!(encoder, X, pattern)
 end
