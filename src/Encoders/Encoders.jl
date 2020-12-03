@@ -12,12 +12,12 @@ function encode end
 #       infered from the promotion of the min and max arguments. After that, the
 #       type of the encoded value could be constrained to be a subtype of this
 #       parameter
-struct Thermometer <: AbstractEncoder
-    min::Float64
-    max::Float64
+struct Thermometer{T <: Real} <: AbstractEncoder
+    min::T
+    max::T
     resolution::Int # TODO: This could be unsigned
 
-    function Thermometer(min::Float64, max::Float64, resolution::Int)
+    function Thermometer{T}(min, max, resolution::Int) where {T <: Real}
         max <= min && throw(ArgumentError(
           "the maximum of the thermometer may not be lesser or equal to its minimum"
         ))
@@ -31,7 +31,11 @@ struct Thermometer <: AbstractEncoder
     end
 end
 
-function encode!(encoder::Thermometer, x::T, pattern::AbstractVector{Bool}) where {T <: Real}
+Thermometer(min::T, max::T, resolution::Int) where {T <: Real} = Thermometer{T}(min, max, resolution)
+Thermometer(min::Real, max::Real, resolution::Int) = Thermometer(promote(min, max)..., resolution)
+Thermometer(::Type{T}, min::Real, max::Real, resolution) where {T <: Real} = Thermometer(convert.(T, (min, max))..., resolution)
+
+function encode!(encoder::Thermometer{T}, x::T, pattern::AbstractVector{Bool}) where {T <: Real}
     length(pattern) != encoder.resolution && throw(
       DimensionMismatch(
         "output pattern must have the length of the thermometer's resolution"))
@@ -43,13 +47,13 @@ function encode!(encoder::Thermometer, x::T, pattern::AbstractVector{Bool}) wher
     pattern
 end
 
-function encode(encoder::Thermometer, x::T) where {T <: Real}
+function encode(encoder::Thermometer{T}, x::T) where {T <: Real}
     pattern = Vector{Bool}(undef, encoder.resolution)
 
     encode!(encoder, x, pattern)
 end
 
-function encode!(encoder::Thermometer, x::AbstractVector{T}, pattern::AbstractMatrix{Bool}) where {T <: Real}
+function encode!(encoder::Thermometer{T}, x::AbstractVector{T}, pattern::AbstractMatrix{Bool}) where {T <: Real}
     size(pattern, 1) != encoder.resolution && throw(
         DimensionMismatch(
           "the number of rows of the output pattern must equal the thermometer's resolution"))
@@ -65,9 +69,8 @@ function encode!(encoder::Thermometer, x::AbstractVector{T}, pattern::AbstractMa
     pattern
 end
 
-# Untested
 # Flat version. All values in the input vector are encoded and placed in a single output vector
-function encode!(encoder::Thermometer, x::AbstractVector{T}, pattern::AbstractVector{Bool}) where {T <: Real}
+function encode!(encoder::Thermometer{T}, x::AbstractVector{T}, pattern::AbstractVector{Bool}) where {T <: Real}
     length(pattern) != length(x) * encoder.resolution && throw(
         DimensionMismatch(
           "the length of the output pattern must equal the thermometer's resolution times the length of x"))
@@ -79,7 +82,7 @@ function encode!(encoder::Thermometer, x::AbstractVector{T}, pattern::AbstractVe
     pattern
 end
 
-function encode(encoder::Thermometer, x::AbstractVector{T}; flat=true) where {T <: Real}
+function encode(encoder::Thermometer{T}, x::AbstractVector{T}; flat=true) where {T <: Real}
     if flat
         pattern = Vector{Bool}(undef, encoder.resolution * length(x))
     else
@@ -89,7 +92,7 @@ function encode(encoder::Thermometer, x::AbstractVector{T}; flat=true) where {T 
     encode!(encoder, x, pattern)
 end
 
-function encode!(encoder::Thermometer, X::AbstractMatrix{T}, pattern::AbstractArray{Bool,3}) where {T <: Real}
+function encode!(encoder::Thermometer{T}, X::AbstractMatrix{T}, pattern::AbstractArray{Bool,3}) where {T <: Real}
     size(pattern, 1) != encoder.resolution && throw(
       DimensionMismatch(
         "the number of rows of the output pattern must equal the thermometer's resolution"))
@@ -109,9 +112,8 @@ function encode!(encoder::Thermometer, X::AbstractMatrix{T}, pattern::AbstractAr
     pattern
 end
 
-# Untested
 # Flat version. All values in each row of the input matrix are encoded and placed in a single row of the output matrix
-function encode!(encoder::Thermometer, X::AbstractMatrix{T}, pattern::AbstractMatrix{Bool}) where {T <: Real}
+function encode!(encoder::Thermometer{T}, X::AbstractMatrix{T}, pattern::AbstractMatrix{Bool}) where {T <: Real}
     size(pattern, 1) != size(X, 1) && throw(
       DimensionMismatch(
         "the number of rows of the output pattern must equal the the number of rows of X"))
@@ -127,7 +129,7 @@ function encode!(encoder::Thermometer, X::AbstractMatrix{T}, pattern::AbstractMa
     pattern
 end
 
-function encode(encoder::Thermometer, X::AbstractMatrix{T}; flat=true) where {T <: Real}
+function encode(encoder::Thermometer{T}, X::AbstractMatrix{T}; flat=true) where {T <: Real}
     if flat
         pattern = Matrix{Bool}(undef, size(X, 1), encoder.resolution * size(X, 2))
     else
