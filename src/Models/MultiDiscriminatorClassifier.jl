@@ -1,5 +1,3 @@
-# TODO: Allow the instantiation without the specification of width (Could be
-#       determined from the training data)
 # TODO: Check how other classification models handle the target type. Should I 
 #       simply enforce it to be an integer? Furthermore, a may consider enforcing
 #       targets to be in the range [1, nclasses]. These could be label encoded
@@ -7,14 +5,23 @@
 #       this, `discriminators` could simply be a list, with the discriminator's
 #       indices being the target they are associated to. `predict_response` return
 #       would also be simplified to a vector or matrix
-struct MultiDiscriminatorClassifier{C, N <: Discriminator} <: AbstractModel
-    mapper::RandomMapper
+mutable struct MultiDiscriminatorClassifier{C, N <: Discriminator} <: AbstractModel
+    n::Int
+    seed::Union{Int,Nothing}
+    mapper::Union{RandomMapper,Nothing}
     discriminators::Dict{C,N}
+
+    function MultiDiscriminatorClassifier{C,N}(n::Int; seed::Union{Nothing,Int}=nothing) where {C,N<:Discriminator}
+        n < 1 && throw(DomainError("tuple size `n` may not be less then 1"))
+        !isnothing(seed) && seed < 0 && throw(DomainError(seed, "`seed` must be non-negative"))
+
+        new{C,N}(n, seed, nothing, Dict{C,N}())
+    end
 
     function MultiDiscriminatorClassifier{C,N}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) where {C,N<:Discriminator}
         mapper = RandomMapper(width, n; seed)
 
-        new{C,N}(mapper, Dict{C,N}())
+        new{C,N}(n, seed, mapper, Dict{C,N}())
     end
 end
 
@@ -22,7 +29,13 @@ end
 MultiDiscriminatorClassifier{C}(args...; kargs...) where C = 
     MultiDiscriminatorClassifier{C,Discriminator}(args...; kargs...)
 
+# TODO: Have a default target type, such as Int
+
 function train!(model::MultiDiscriminatorClassifier{C,N}, X::T, y::C) where {T <: AbstractVector{Bool}, C, N <: Discriminator}
+    if isnothing(model.mapper)
+        model.mapper = RandomMapper(length(X), model.n; seed=model.seed)
+    end
+    
     train!(get!(model.discriminators, y) do
         N(model.mapper)
     end, X)

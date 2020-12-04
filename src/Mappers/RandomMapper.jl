@@ -7,6 +7,7 @@ struct RandomMapper <: Mapper
     n::Int
     masks::Vector{Vector{Int}}
 
+    # TODO: Use DomainError instead of argument error
     function RandomMapper(width::Int, n::Int; seed::Union{Nothing,Int}=nothing)
         !isnothing(seed) && seed < 0 && throw(ArgumentError("Seed must be non-negative"))
         width < 0 && throw(ArgumentError("Width must be non-negative"))

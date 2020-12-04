@@ -7,7 +7,7 @@ struct Discriminator{T <: AbstractNode} <: AbstractModel
     mapper::RandomMapper
     nodes::Vector{T}
 
-    function Discriminator{T}(mapper::RandomMapper) where {T <: AbstractNode}
+    function Discriminator{T}(mapper::Union{RandomMapper,Nothing}=nothing) where {T <: AbstractNode}
         nodes = [T() for _ in 1:length(mapper)]
         
         new{T}(mapper, nodes)

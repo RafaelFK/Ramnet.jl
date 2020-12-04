@@ -33,6 +33,14 @@ using ramnet.Models: MultiDiscriminatorClassifier, BleachingDiscriminator
 
     @test_throws DimensionMismatch train!(model_3, X, ["On"])
 
+    ## Parameter `width` can be infered from data
+    @test_throws DomainError MultiDiscriminatorClassifier{string}(0)
+    @test_throws DomainError MultiDiscriminatorClassifier{String}(3; seed=-1)
+
+    model_4 = MultiDiscriminatorClassifier{String}(3)
+
+    train!(model_4, X, y)
+
     ## Classifiers with nodes that support bleaching
     model_b = MultiDiscriminatorClassifier{String,BleachingDiscriminator}(9, 3)
 
@@ -56,7 +64,6 @@ using ramnet.Models: MultiDiscriminatorClassifier, BleachingDiscriminator
     @test predict_bleached_response(model_b, all_active) == Dict("On" => 3, "Off" => 0)
     @test predict_bleached_response(model_b, all_inactive) == Dict("On" => 0, "Off" => 3)
     @test predict_bleached(model_b, X) == ["On", "Off"]
-
 
     # Future tests:
     # - predict over model trained on a single pattern
