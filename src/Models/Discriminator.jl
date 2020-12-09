@@ -40,8 +40,9 @@ end
 Discriminator(args...; kargs...) = Discriminator{DictNode}(args...; kargs...)
 
 # const StandardDiscriminator  = Discriminator{DictNode{Vector{Bool}}}
-const BitDiscriminator       = Discriminator{DictNode{BitVector}}
-const BleachingDiscriminator = Discriminator{AccNode}
+const BitDiscriminator        = Discriminator{DictNode{BitVector}}
+const BleachingDiscriminator  = Discriminator{AccNode}
+const RegressionDiscriminator = Discriminator{RegressionNode{Float64}}
 
 function train!(d::Discriminator, X::T) where {T <: AbstractVecOrMat{Bool}}
     for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
@@ -100,4 +101,33 @@ function predict(d::BleachingDiscriminator, X::T; b=0) where {T <: AbstractMatri
     end
 
     return response
+end
+
+################################################################################
+# Specialized training and prediction methods for the regresion variant
+
+function train!(d::Discriminator{RegressionNode{S}}, X, y) where {S <: Real}
+    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+        Nodes.train!(node, x, y)
+    end
+
+    return nothing
+end
+
+function predict(d::Discriminator{RegressionNode{S}}, X::AbstractVector{Bool}) where {S <: Real}
+    partial_count = zero(Int)
+    estimate = zero(S)
+
+    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+        count, sum = predict(node, x)
+
+        partial_count += count
+        estimate += sum
+    end
+
+    return partial_count == 0 ? estimate : estimate / partial_count
+end
+
+function predict(d::Discriminator{RegressionNode{S}}, X::AbstractMatrix{Bool}) where {S <: Real}
+    [predict(d, x) for x in eachrow(X)]
 end

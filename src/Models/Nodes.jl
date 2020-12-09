@@ -2,7 +2,7 @@ module Nodes
 
 import ..AbstractModel, ..train!, ..predict
 
-export AbstractNode, DictNode, AccNode
+export AbstractNode, DictNode, AccNode, RegressionNode
 
 # TODO: There is nothing preventing different sized inputs
 abstract type AbstractNode <: AbstractModel end
@@ -66,6 +66,39 @@ end
 
 function predict(node::AccNode, X::T; b::Int=0) where {T <: AbstractMatrix{Bool}}
     return [predict(node, x; b) for x in eachrow(X)]
+end
+
+
+################################################################################
+struct RegressionNode{T <: Real} <: AbstractNode
+    dict::Dict{Vector{Bool},Tuple{Int,T}}
+end
+
+RegressionNode{T}() where {T <: Real} = RegressionNode(Dict{Vector{Bool},Tuple{Int,T}}())
+RegressionNode() = RegressionNode{Float64}()
+
+function train!(node::RegressionNode{S}, X::T, y::S) where {S <: Real,T <: AbstractVector{Bool}}
+    count, sum = get(node.dict, X, (zero(Int), zero(S)))
+    
+    node.dict[X] = (count + 1, sum + y)
+
+    nothing
+end
+
+function train!(node::RegressionNode{S}, X::T, y::AbstractVector{S}) where {S <: Real,T <: AbstractMatrix{Bool}}
+    for (x, target) in Iterators.zip(eachrow(X), y)
+        train!(node, x, target)
+    end
+end
+
+function predict(node::RegressionNode{S}, X::T) where {S <: Real,T <: AbstractVector{Bool}}
+    count, sum = get(node.dict, X, (zero(Int), zero(S)))
+
+    return count == 0 ? (0, 0) : (count, sum)
+end
+
+function predict(node::RegressionNode{S}, X::T) where {S <: Real,T <: AbstractMatrix{Bool}}
+    return [predict(node, x) for (x, d) in eachrow(X)]
 end
 
 end
