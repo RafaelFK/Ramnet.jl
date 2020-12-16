@@ -12,7 +12,7 @@ mutable struct MultiDiscriminatorClassifier{C, N <: Discriminator} <: AbstractMo
     discriminators::Dict{C,N}
 
     function MultiDiscriminatorClassifier{C,N}(n::Int; seed::Union{Nothing,Int}=nothing) where {C,N<:Discriminator}
-        n < 1 && throw(DomainError("tuple size `n` may not be less then 1"))
+        n < 1 && throw(DomainError(n, "tuple size `n` may not be less then 1"))
         !isnothing(seed) && seed < 0 && throw(DomainError(seed, "`seed` must be non-negative"))
 
         new{C,N}(n, seed, nothing, Dict{C,N}())

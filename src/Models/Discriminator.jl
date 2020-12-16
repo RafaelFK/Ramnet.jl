@@ -6,30 +6,30 @@ using ..Mappers
 struct Discriminator{T <: AbstractNode} <: AbstractModel
     mapper::RandomMapper
     nodes::Vector{T}
-
-    function Discriminator{T}(mapper::Union{RandomMapper,Nothing}=nothing) where {T <: AbstractNode}
-        nodes = [T() for _ in 1:length(mapper)]
-        
-        new{T}(mapper, nodes)
-    end
 end
 
-function Discriminator{T}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: AbstractNode}
+function Discriminator{T}(mapper::Union{RandomMapper,Nothing}=nothing; kargs...) where {T <: AbstractNode}
+    nodes = [T(;kargs...) for _ in 1:length(mapper)]
+    
+    Discriminator{T}(mapper, nodes)
+end
+
+function Discriminator{T}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: AbstractNode}
     mapper = RandomMapper(width, n; seed)
 
-    Discriminator{T}(mapper)
+    Discriminator{T}(mapper; kargs...)
 end
 
-function Discriminator{T}(X::U, mapper::RandomMapper) where {T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
-    d = Discriminator{T}(mapper)
+function Discriminator{T}(X::U, mapper::RandomMapper; kargs...) where {T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
+    d = Discriminator{T}(mapper; kargs...)
 
     train!(d, X)
 
     return d
 end
 
-function Discriminator{T}(X::U, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
-    d = Discriminator{T}(size(X)[end], n; seed)
+function Discriminator{T}(X::U, n::Int; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
+    d = Discriminator{T}(size(X)[end], n; seed, kargs...)
 
     train!(d, X)
 
@@ -123,9 +123,14 @@ function predict(d::Discriminator{RegressionNode{S}}, X::AbstractVector{Bool}) w
 
         partial_count += count
         estimate += sum
+
+        # if count != 0
+        #     estimate += sum / count
+        # end
     end
 
     return partial_count == 0 ? estimate : estimate / partial_count
+    # return estimate / length(d.nodes)
 end
 
 function predict(d::Discriminator{RegressionNode{S}}, X::AbstractMatrix{Bool}) where {S <: Real}

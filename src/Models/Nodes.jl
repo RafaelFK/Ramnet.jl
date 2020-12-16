@@ -71,16 +71,25 @@ end
 
 ################################################################################
 struct RegressionNode{T <: Real} <: AbstractNode
+    γ::Float64
     dict::Dict{Vector{Bool},Tuple{Int,T}}
+
+    function RegressionNode{T}(γ, dict) where {T <: Real}
+        if !(0.0 ≤ γ ≤ 1.0)
+            throw(DomainError(γ, "`γ` must lie in the [0, 1] interval"))
+        end
+
+        new{T}(γ, dict)
+    end
 end
 
-RegressionNode{T}() where {T <: Real} = RegressionNode(Dict{Vector{Bool},Tuple{Int,T}}())
-RegressionNode() = RegressionNode{Float64}()
+RegressionNode{T}(;γ=1.0) where {T <: Real} = RegressionNode{T}(γ, Dict{Vector{Bool},Tuple{Int,T}}())
+RegressionNode(;γ=1.0) = RegressionNode{Float64}(γ)
 
 function train!(node::RegressionNode{S}, X::T, y::S) where {S <: Real,T <: AbstractVector{Bool}}
     count, sum = get(node.dict, X, (zero(Int), zero(S)))
     
-    node.dict[X] = (count + 1, sum + y)
+    node.dict[X] = (count + 1, node.γ * sum + y)
 
     nothing
 end
@@ -94,7 +103,16 @@ end
 function predict(node::RegressionNode{S}, X::T) where {S <: Real,T <: AbstractVector{Bool}}
     count, sum = get(node.dict, X, (zero(Int), zero(S)))
 
-    return count == 0 ? (0, 0) : (count, sum)
+    if count == 0
+        denominator = 0
+    elseif node.γ != 1.0
+        denominator = (1 - node.γ^count) / (1 - node.γ)
+    else
+        denominator = count
+    end
+
+    # return count == 0 ? (0, 0) : (count, sum)
+    return (denominator, sum)
 end
 
 function predict(node::RegressionNode{S}, X::T) where {S <: Real,T <: AbstractMatrix{Bool}}
