@@ -1,3 +1,4 @@
 /Manifest.toml
 /benchmark/*.json
 /examples/.ipynb_checkpoints/
+*.png

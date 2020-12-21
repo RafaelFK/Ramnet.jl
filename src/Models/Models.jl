@@ -27,7 +27,11 @@ include("Nodes.jl")
 # export DictNode, AccNode
 
 include("Discriminator.jl")
-export Discriminator, BitDiscriminator, BleachingDiscriminator, RegressionDiscriminator
+export Discriminator,
+  BitDiscriminator,
+  BleachingDiscriminator,
+  RegressionDiscriminator,
+  GeneralizedRegressionDiscriminator
 
 include("MultiDiscriminatorClassifier.jl")
 export MultiDiscriminatorClassifier

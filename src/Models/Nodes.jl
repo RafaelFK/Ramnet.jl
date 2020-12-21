@@ -2,7 +2,7 @@ module Nodes
 
 import ..AbstractModel, ..train!, ..predict
 
-export AbstractNode, DictNode, AccNode, RegressionNode
+export AbstractNode, DictNode, AccNode, RegressionNode, GeneralizedRegressionNode
 
 # TODO: There is nothing preventing different sized inputs
 abstract type AbstractNode <: AbstractModel end
@@ -116,6 +116,40 @@ function predict(node::RegressionNode{S}, X::T) where {S <: Real,T <: AbstractVe
 end
 
 function predict(node::RegressionNode{S}, X::T) where {S <: Real,T <: AbstractMatrix{Bool}}
+    return [predict(node, x) for (x, d) in eachrow(X)]
+end
+
+################################################################################
+# TODO: Enforce α to be greater than zero
+struct GeneralizedRegressionNode <: AbstractNode
+    α::Float64
+    dict::Dict{Vector{Bool},Tuple{Int,Float64}}
+end
+
+
+GeneralizedRegressionNode(;α::Float64) = GeneralizedRegressionNode(α, Dict{Vector{Bool},Tuple{Int,Float64}}())
+
+# TODO: Make stepsize function that takes in a node and returns its appropriate α
+function train!(node::GeneralizedRegressionNode, X::T, y::Float64) where {T <: AbstractVector{Bool}}
+    count, estimate = get(node.dict, X, (zero(Int), zero(Float64)))
+    
+    node.dict[X] = (count + 1, estimate + node.α * (y - estimate))
+    # node.dict[X] = (count + 1, estimate + 1 / (count + 1) * (y - estimate))
+
+    nothing
+end
+
+function train!(node::GeneralizedRegressionNode, X::T, y::AbstractVector{Float64}) where {T <: AbstractMatrix{Bool}}
+    for (x, target) in Iterators.zip(eachrow(X), y)
+        train!(node, x, target)
+    end
+end
+
+function predict(node::GeneralizedRegressionNode, X::T) where {T <: AbstractVector{Bool}}
+    get(node.dict, X, (zero(Int), zero(Float64)))
+end
+
+function predict(node::GeneralizedRegressionNode, X::T) where {T <: AbstractMatrix{Bool}}
     return [predict(node, x) for (x, d) in eachrow(X)]
 end
 

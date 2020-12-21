@@ -43,6 +43,7 @@ Discriminator(args...; kargs...) = Discriminator{DictNode}(args...; kargs...)
 const BitDiscriminator        = Discriminator{DictNode{BitVector}}
 const BleachingDiscriminator  = Discriminator{AccNode}
 const RegressionDiscriminator = Discriminator{RegressionNode{Float64}}
+const GeneralizedRegressionDiscriminator = Discriminator{GeneralizedRegressionNode}
 
 function train!(d::Discriminator, X::T) where {T <: AbstractVecOrMat{Bool}}
     for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
@@ -123,16 +124,46 @@ function predict(d::Discriminator{RegressionNode{S}}, X::AbstractVector{Bool}) w
 
         partial_count += count
         estimate += sum
-
-        # if count != 0
-        #     estimate += sum / count
-        # end
     end
 
     return partial_count == 0 ? estimate : estimate / partial_count
-    # return estimate / length(d.nodes)
 end
 
 function predict(d::Discriminator{RegressionNode{S}}, X::AbstractMatrix{Bool}) where {S <: Real}
     [predict(d, x) for x in eachrow(X)]
 end
+
+################################################################################
+# Specialized training and prediction methods for the generalized regresion discriminator
+
+function train!(d::Discriminator{GeneralizedRegressionNode}, X, y)
+    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+        Nodes.train!(node, x, y)
+    end
+
+    return nothing
+end
+
+# This expects that α is a constant
+function predict(d::Discriminator{GeneralizedRegressionNode}, X::AbstractVector{Bool})
+    running_numerator = zero(Float64)
+    running_denominator = zero(Float64)
+
+    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+        count, estimate = predict(node, x)
+
+        α = node.α
+        if count != 0
+            # α = 1 / count
+            running_numerator += estimate / α
+            running_denominator += 1 / α
+        end
+    end
+
+    return running_denominator == 0 ? zero(Float64) : running_numerator / running_denominator
+end
+
+function predict(d::Discriminator{GeneralizedRegressionNode}, X::AbstractMatrix{Bool})
+    [predict(d, x) for x in eachrow(X)]
+end
+
