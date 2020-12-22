@@ -1,7 +1,7 @@
 # TODO: Consider other concept for the names here instead of mapping (ex. partitioning)
 module Partitioners
 
-export partition
+export AbstractPartitioner, partition
 
 abstract type AbstractPartitioner end
 
@@ -31,7 +31,8 @@ end
 Base.length(partitioner::P) where {P <: AbstractPartitioner} = ceil(Int, partitioner.width / partitioner.n)
 
 function Base.length(itr::PartitionerIterator{P,T}) where {P <: AbstractPartitioner,T <: AbstractVecOrMat}
-    ceil(Int, size(itr.X)[end] / itr.partitioner.n)
+    # ceil(Int, size(itr.X)[end] / itr.partitioner.n)
+    length(itr.partitioner)
 end
 
 Base.eltype(::Type{PartitionerIterator{P,T}}) where {P <: AbstractPartitioner,T <: AbstractVecOrMat} = T

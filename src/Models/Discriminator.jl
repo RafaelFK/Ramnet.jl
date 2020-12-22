@@ -3,47 +3,48 @@ using ..Partitioners
 
 # TODO: Allow the instantiation without the specification of width (Could be
 #       determined from the training data) 
-struct Discriminator{T <: AbstractNode} <: AbstractModel
-    partitioner::RandomPartitioner
+struct Discriminator{P <: AbstractPartitioner,T <: AbstractNode} <: AbstractModel
+    partitioner::P
     nodes::Vector{T}
 end
 
-function Discriminator{T}(partitioner::Union{RandomPartitioner,Nothing}=nothing; kargs...) where {T <: AbstractNode}
+function Discriminator{P,T}(partitioner::P; kargs...) where {P <: AbstractPartitioner,T <: AbstractNode}
     nodes = [T(;kargs...) for _ in 1:length(partitioner)]
     
-    Discriminator{T}(partitioner, nodes)
+    Discriminator{P,T}(partitioner, nodes)
 end
 
-function Discriminator{T}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: AbstractNode}
+function Discriminator{RandomPartitioner,T}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: AbstractNode}
     partitioner = RandomPartitioner(width, n; seed)
 
-    Discriminator{T}(partitioner; kargs...)
+    Discriminator{RandomPartitioner,T}(partitioner; kargs...)
 end
 
-function Discriminator{T}(X::U, partitioner::RandomPartitioner; kargs...) where {T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
-    d = Discriminator{T}(partitioner; kargs...)
+function Discriminator{P,T}(X::U, partitioner::P; kargs...) where {P <: AbstractPartitioner,T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
+    d = Discriminator{P,T}(partitioner; kargs...)
 
     train!(d, X)
 
     return d
 end
 
-function Discriminator{T}(X::U, n::Int; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
-    d = Discriminator{T}(size(X)[end], n; seed, kargs...)
+function Discriminator{RandomPartitioner,T}(X::U, n::Int; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
+    d = Discriminator{RandomPartitioner,T}(size(X)[end], n; seed, kargs...)
 
     train!(d, X)
 
     return d
 end
 
-# Default node is DictNode
-Discriminator(args...; kargs...) = Discriminator{DictNode}(args...; kargs...)
+## Aliases and convenience constructors
+# Default node is DictNode with random partitioning
+Discriminator(args...; kargs...) = Discriminator{RandomPartitioner,DictNode}(args...; kargs...)
 
-# const StandardDiscriminator  = Discriminator{DictNode{Vector{Bool}}}
-const BitDiscriminator        = Discriminator{DictNode{BitVector}}
-const BleachingDiscriminator  = Discriminator{AccNode}
-const RegressionDiscriminator = Discriminator{RegressionNode{Float64}}
-const GeneralizedRegressionDiscriminator = Discriminator{GeneralizedRegressionNode}
+const BitDiscriminator        = Discriminator{RandomPartitioner,DictNode{BitVector}}
+const BleachingDiscriminator  = Discriminator{RandomPartitioner,AccNode} # This should be the default classification discriminator
+
+RegressionDiscriminator = Discriminator{RandomPartitioner,RegressionNode{Float64}}
+GeneralizedRegressionDiscriminator = Discriminator{RandomPartitioner,GeneralizedRegressionNode}
 
 function train!(d::Discriminator, X::T) where {T <: AbstractVecOrMat{Bool}}
     for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
@@ -107,7 +108,7 @@ end
 ################################################################################
 # Specialized training and prediction methods for the regresion variant
 
-function train!(d::Discriminator{RegressionNode{S}}, X, y) where {S <: Real}
+function train!(d::Discriminator{P,RegressionNode{S}}, X, y) where {P <: AbstractPartitioner,S <: Real}
     for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         Nodes.train!(node, x, y)
     end
@@ -115,7 +116,7 @@ function train!(d::Discriminator{RegressionNode{S}}, X, y) where {S <: Real}
     return nothing
 end
 
-function predict(d::Discriminator{RegressionNode{S}}, X::AbstractVector{Bool}) where {S <: Real}
+function predict(d::Discriminator{P,RegressionNode{S}}, X::AbstractVector{Bool}) where {P <: AbstractPartitioner,S <: Real}
     partial_count = zero(Int)
     estimate = zero(S)
 
@@ -129,14 +130,14 @@ function predict(d::Discriminator{RegressionNode{S}}, X::AbstractVector{Bool}) w
     return partial_count == 0 ? estimate : estimate / partial_count
 end
 
-function predict(d::Discriminator{RegressionNode{S}}, X::AbstractMatrix{Bool}) where {S <: Real}
+function predict(d::Discriminator{P,RegressionNode{S}}, X::AbstractMatrix{Bool}) where {P <: AbstractPartitioner,S <: Real}
     [predict(d, x) for x in eachrow(X)]
 end
 
 ################################################################################
 # Specialized training and prediction methods for the generalized regresion discriminator
 
-function train!(d::Discriminator{GeneralizedRegressionNode}, X, y)
+function train!(d::Discriminator{P,GeneralizedRegressionNode}, X, y) where {P <: AbstractPartitioner}
     for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         Nodes.train!(node, x, y)
     end
@@ -145,7 +146,7 @@ function train!(d::Discriminator{GeneralizedRegressionNode}, X, y)
 end
 
 # This expects that α is a constant
-function predict(d::Discriminator{GeneralizedRegressionNode}, X::AbstractVector{Bool})
+function predict(d::Discriminator{P,GeneralizedRegressionNode}, X::AbstractVector{Bool}) where {P <: AbstractPartitioner}
     running_numerator = zero(Float64)
     running_denominator = zero(Float64)
 
@@ -163,7 +164,7 @@ function predict(d::Discriminator{GeneralizedRegressionNode}, X::AbstractVector{
     return running_denominator == 0 ? zero(Float64) : running_numerator / running_denominator
 end
 
-function predict(d::Discriminator{GeneralizedRegressionNode}, X::AbstractMatrix{Bool})
+function predict(d::Discriminator{P,GeneralizedRegressionNode}, X::AbstractMatrix{Bool}) where {P <: AbstractPartitioner}
     [predict(d, x) for x in eachrow(X)]
 end
 

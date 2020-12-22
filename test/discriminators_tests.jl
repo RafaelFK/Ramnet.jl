@@ -1,9 +1,10 @@
 using ramnet.Utils: stack
-using ramnet.Partitioners: RandomPartitioner
+using ramnet.Partitioners: RandomPartitioner, LinearPartitioner
+using ramnet.Models.Nodes: RegressionNode
 using ramnet.Models: train!, predict
 using ramnet.Models: Discriminator, BleachingDiscriminator
 
-@testset "Discriminator" begin
+@testset "Classification Discriminator" begin
     all_active = ones(Bool, 9)
     one_off    = Bool[0, ones(Bool, 8)...]
 
@@ -49,4 +50,60 @@ using ramnet.Models: Discriminator, BleachingDiscriminator
     @test predict(b_d, one_off) == 3
     @test predict(b_d, all_active; b=1) == 2
     @test predict(b_d, one_off; b=1) == 2
+end
+
+@testset "Original and Discounted Regression Discriminator" begin
+    X_train = Bool[
+        1 1 0 0 0 0
+        1 1 1 0 0 0
+        1 1 1 1 0 0
+        1 1 1 1 1 0
+        1 1 1 1 1 1
+    ]
+
+    y_train = Float64[1, 2, 3, 4, 5]
+
+    X_test = Bool[
+        0 0 0 0 0 0
+        1 0 0 0 0 0
+        1 1 0 0 0 0
+        1 1 1 1 1 1
+        1 1 1 0 0 0
+    ]
+
+    # As in the original regression discriminator
+    y_test_original = Float64[7 / 4, 7 / 4, 22 / 9, 32 / 9, 23 / 9]
+
+    partitioner = LinearPartitioner(6, 2)
+
+    regressor = Discriminator{LinearPartitioner,RegressionNode{Float64}}(partitioner; γ=1.0)
+
+    train!(regressor, X_train, y_train)
+
+    @test predict(regressor, X_test) == y_test_original
+
+    # Discounted regression discriminator
+    e(n; γ=0.7) = (1 - γ^n) / (1 - γ) # sum of weights
+    function s(vs; γ=0.7) # Discounted sum
+        su = 0.0
+        for (i, v) in Iterators.enumerate(Iterators.reverse(vs))
+            su += γ^(i - 1) * v
+        end
+
+        su
+    end
+
+    y_test_discounted = Float64[
+        (s([1]) + s([1,2,3])) / (e(1) + e(3)),
+        (s([1]) + s([1,2,3])) / (e(1) + e(3)),
+        (s([1,2,3,4,5]) + s([1]) + s([1,2,3])) / (e(5) + e(1) + e(3)),
+        (s([1,2,3,4,5]) + s([3,4,5]) + s([5])) / (e(5) + e(3) + e(1)),
+        (s([1,2,3,4,5]) + s([2]) + s([1,2,3])) / (e(5) + e(1) + e(3))
+    ]
+
+    regressor = Discriminator{LinearPartitioner,RegressionNode{Float64}}(partitioner; γ=0.7)
+
+    train!(regressor, X_train, y_train)
+
+    @test predict(regressor, X_test) ≈ y_test_discounted
 end
