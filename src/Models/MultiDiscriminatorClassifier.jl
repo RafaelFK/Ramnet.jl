@@ -8,7 +8,7 @@
 mutable struct MultiDiscriminatorClassifier{C, N <: Discriminator} <: AbstractModel
     n::Int
     seed::Union{Int,Nothing}
-    mapper::Union{RandomMapper,Nothing}
+    partitioner::Union{RandomPartitioner,Nothing}
     discriminators::Dict{C,N}
 
     function MultiDiscriminatorClassifier{C,N}(n::Int; seed::Union{Nothing,Int}=nothing) where {C,N<:Discriminator}
@@ -19,9 +19,9 @@ mutable struct MultiDiscriminatorClassifier{C, N <: Discriminator} <: AbstractMo
     end
 
     function MultiDiscriminatorClassifier{C,N}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing) where {C,N<:Discriminator}
-        mapper = RandomMapper(width, n; seed)
+        partitioner = RandomPartitioner(width, n; seed)
 
-        new{C,N}(n, seed, mapper, Dict{C,N}())
+        new{C,N}(n, seed, partitioner, Dict{C,N}())
     end
 end
 
@@ -32,12 +32,12 @@ MultiDiscriminatorClassifier{C}(args...; kargs...) where C =
 # TODO: Have a default target type, such as Int
 
 function train!(model::MultiDiscriminatorClassifier{C,N}, X::T, y::C) where {T <: AbstractVector{Bool}, C, N <: Discriminator}
-    if isnothing(model.mapper)
-        model.mapper = RandomMapper(length(X), model.n; seed=model.seed)
+    if isnothing(model.partitioner)
+        model.partitioner = RandomPartitioner(length(X), model.n; seed=model.seed)
     end
     
     train!(get!(model.discriminators, y) do
-        N(model.mapper)
+        N(model.partitioner)
     end, X)
 end
 

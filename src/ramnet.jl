@@ -4,10 +4,10 @@ include("Utils.jl")
 
 include("Encoders/Encoders.jl")
 
-include("Mappers/Mappers.jl")
+include("Partitioners/Partitioners.jl")
 
-using ramnet.Mappers
-export RandomMapper, random_mapping
+using ramnet.Partitioners
+export partition, RandomPartitioner, random_partitioning
 
 include("Models/Models.jl")
 using ramnet.Models

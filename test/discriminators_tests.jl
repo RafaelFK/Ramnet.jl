@@ -1,5 +1,5 @@
 using ramnet.Utils: stack
-using ramnet.Mappers: RandomMapper
+using ramnet.Partitioners: RandomPartitioner
 using ramnet.Models: train!, predict
 using ramnet.Models: Discriminator, BleachingDiscriminator
 
@@ -17,15 +17,15 @@ using ramnet.Models: Discriminator, BleachingDiscriminator
     inputs = stack(all_active, one_off)
     @test predict(d, inputs) == [3, 2]
 
-    # Discriminator with externally-instantiated mapper
-    mapper   = RandomMapper(length(all_active), 3)
-    d_mapper = Discriminator(mapper)
-    train!(d_mapper, all_active)
-    @test predict(d_mapper, all_active) == 3
+    # Discriminator with externally-instantiated partitioner
+    partitioner   = RandomPartitioner(length(all_active), 3)
+    d_partitioner = Discriminator(partitioner)
+    train!(d_partitioner, all_active)
+    @test predict(d_partitioner, all_active) == 3
 
     # One-shot instantiation and training
     duplicated_input = stack(all_active, all_active)
-    one_shot_d_1 = Discriminator(all_active, mapper)
+    one_shot_d_1 = Discriminator(all_active, partitioner)
     one_shot_d_2 = Discriminator(all_active, 3)
     one_shot_d_3 = Discriminator(duplicated_input, 3)
 

@@ -4,7 +4,7 @@ include("utilites_tests.jl")
 
 include("encoder_tests.jl")
 
-include("mapping_tests.jl")
+include("partitioning_tests.jl")
 
 include("nodes_tests.jl")
 

@@ -1,27 +1,27 @@
 using .Nodes
-using ..Mappers
+using ..Partitioners
 
 # TODO: Allow the instantiation without the specification of width (Could be
 #       determined from the training data) 
 struct Discriminator{T <: AbstractNode} <: AbstractModel
-    mapper::RandomMapper
+    partitioner::RandomPartitioner
     nodes::Vector{T}
 end
 
-function Discriminator{T}(mapper::Union{RandomMapper,Nothing}=nothing; kargs...) where {T <: AbstractNode}
-    nodes = [T(;kargs...) for _ in 1:length(mapper)]
+function Discriminator{T}(partitioner::Union{RandomPartitioner,Nothing}=nothing; kargs...) where {T <: AbstractNode}
+    nodes = [T(;kargs...) for _ in 1:length(partitioner)]
     
-    Discriminator{T}(mapper, nodes)
+    Discriminator{T}(partitioner, nodes)
 end
 
 function Discriminator{T}(width::Int, n::Int; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: AbstractNode}
-    mapper = RandomMapper(width, n; seed)
+    partitioner = RandomPartitioner(width, n; seed)
 
-    Discriminator{T}(mapper; kargs...)
+    Discriminator{T}(partitioner; kargs...)
 end
 
-function Discriminator{T}(X::U, mapper::RandomMapper; kargs...) where {T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
-    d = Discriminator{T}(mapper; kargs...)
+function Discriminator{T}(X::U, partitioner::RandomPartitioner; kargs...) where {T <: AbstractNode,U <: AbstractVecOrMat{Bool}}
+    d = Discriminator{T}(partitioner; kargs...)
 
     train!(d, X)
 
@@ -46,7 +46,7 @@ const RegressionDiscriminator = Discriminator{RegressionNode{Float64}}
 const GeneralizedRegressionDiscriminator = Discriminator{GeneralizedRegressionNode}
 
 function train!(d::Discriminator, X::T) where {T <: AbstractVecOrMat{Bool}}
-    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         Nodes.train!(node, x)
     end
 
@@ -63,7 +63,7 @@ end
 function predict(d::Discriminator, X::T) where {T <: AbstractVector{Bool}}
     response = zero(Int)
 
-    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         response += Nodes.predict(node, x)
     end
 
@@ -73,7 +73,7 @@ end
 function predict(d::Discriminator, X::T) where {T <: AbstractMatrix{Bool}}
     response = zeros(Int, size(X, 1))
 
-    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         response += Nodes.predict(node, x)
     end
 
@@ -87,7 +87,7 @@ end
 function predict(d::BleachingDiscriminator, X::T; b=0) where {T <: AbstractVector{Bool}}
     response = zero(Int)
 
-    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         response += Nodes.predict(node, x; b)
     end
 
@@ -97,7 +97,7 @@ end
 function predict(d::BleachingDiscriminator, X::T; b=0) where {T <: AbstractMatrix{Bool}}
     response = zeros(Int, size(X, 1))
 
-    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         response += Nodes.predict(node, x; b)
     end
 
@@ -108,7 +108,7 @@ end
 # Specialized training and prediction methods for the regresion variant
 
 function train!(d::Discriminator{RegressionNode{S}}, X, y) where {S <: Real}
-    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         Nodes.train!(node, x, y)
     end
 
@@ -119,7 +119,7 @@ function predict(d::Discriminator{RegressionNode{S}}, X::AbstractVector{Bool}) w
     partial_count = zero(Int)
     estimate = zero(S)
 
-    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         count, sum = predict(node, x)
 
         partial_count += count
@@ -137,7 +137,7 @@ end
 # Specialized training and prediction methods for the generalized regresion discriminator
 
 function train!(d::Discriminator{GeneralizedRegressionNode}, X, y)
-    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         Nodes.train!(node, x, y)
     end
 
@@ -149,7 +149,7 @@ function predict(d::Discriminator{GeneralizedRegressionNode}, X::AbstractVector{
     running_numerator = zero(Float64)
     running_denominator = zero(Float64)
 
-    for (node, x) in Iterators.zip(d.nodes, map(d.mapper, X))
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         count, estimate = predict(node, x)
 
         α = node.α
