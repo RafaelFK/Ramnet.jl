@@ -7,6 +7,11 @@ export AbstractNode, DictNode, AccNode, RegressionNode, GeneralizedRegressionNod
 # TODO: There is nothing preventing different sized inputs
 abstract type AbstractNode <: AbstractModel end
 
+# Generic methods
+function predict(node::N, X::T; kargs...) where {N <: AbstractNode,T <: AbstractMatrix{Bool}}
+    return [predict(node, x; kargs...) for x in eachrow(X)]
+end
+
 # If both BitVectors and BoolVectors hash to the same value when they have the same
 # content, does it matter which type I choose as key for the underlying dictionary?
 # I should check if both DictNode{BitVector} and DictNode{Vector{Bool}} accept any
@@ -36,11 +41,6 @@ function predict(node::DictNode, X::T) where {T <: AbstractVector{Bool}}
     return get(node.dict, X, zero(Int8))
 end
 
-function predict(node::DictNode, X::T) where {T <: AbstractMatrix{Bool}}
-    return [get(node.dict, x, zero(Int8)) for x in eachrow(X)]
-end
-
-
 ################################################################################
 struct AccNode <: AbstractNode
     acc::Dict{Vector{Bool},Int64}
@@ -64,11 +64,6 @@ function predict(node::AccNode, X::T; b::Int=0) where {T <: AbstractVector{Bool}
     get(node.acc, X, 0) > b
 end
 
-function predict(node::AccNode, X::T; b::Int=0) where {T <: AbstractMatrix{Bool}}
-    return [predict(node, x; b) for x in eachrow(X)]
-end
-
-
 ################################################################################
 struct RegressionNode{T <: Real} <: AbstractNode
     γ::Float64
@@ -84,7 +79,7 @@ struct RegressionNode{T <: Real} <: AbstractNode
 end
 
 RegressionNode{T}(;γ=1.0) where {T <: Real} = RegressionNode{T}(γ, Dict{Vector{Bool},Tuple{Int,T}}())
-RegressionNode(;γ=1.0) = RegressionNode{Float64}(γ)
+RegressionNode(;γ=1.0) = RegressionNode{Float64}(;γ)
 
 function train!(node::RegressionNode{S}, X::T, y::S) where {S <: Real,T <: AbstractVector{Bool}}
     count, sum = get(node.dict, X, (zero(Int), zero(S)))
@@ -115,10 +110,6 @@ function predict(node::RegressionNode{S}, X::T) where {S <: Real,T <: AbstractVe
     return (denominator, sum)
 end
 
-function predict(node::RegressionNode{S}, X::T) where {S <: Real,T <: AbstractMatrix{Bool}}
-    return [predict(node, x) for (x, d) in eachrow(X)]
-end
-
 ################################################################################
 # TODO: Enforce α to be greater than zero
 struct GeneralizedRegressionNode <: AbstractNode
@@ -147,10 +138,6 @@ end
 
 function predict(node::GeneralizedRegressionNode, X::T) where {T <: AbstractVector{Bool}}
     get(node.dict, X, (zero(Int), zero(Float64)))
-end
-
-function predict(node::GeneralizedRegressionNode, X::T) where {T <: AbstractMatrix{Bool}}
-    return [predict(node, x) for (x, d) in eachrow(X)]
 end
 
 end
