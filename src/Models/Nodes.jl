@@ -10,6 +10,13 @@ abstract type AbstractClassificationNode <: AbstractNode end
 abstract type AbstractRegressionNode <: AbstractNode end
 
 # Generic methods
+
+function train!(node::N, X::T) where {N <: AbstractClassificationNode,T <: AbstractMatrix{Bool}}
+    for x in eachrow(X)
+        train!(node, x)
+    end
+end
+
 # TODO: This is implicitly requiring that a AbstractClassificationNode has a `memory` field
 #       and a `default` field. It might be better to enforce this through traits.
 function predict(node::N, X::T; b::Int=0) where {N <: AbstractClassificationNode,T <: AbstractVector{Bool}}
@@ -41,14 +48,6 @@ function train!(node::DictNode, X::T) where {T <: AbstractVector{Bool}}
     nothing
 end
 
-function train!(node::DictNode, X::T) where {T <: AbstractMatrix{Bool}}
-    for x in eachrow(X)
-        node.memory[x] = 1
-    end
-
-    nothing
-end 
-
 ################################################################################
 struct AccNode <: AbstractClassificationNode
     default::Int64
@@ -61,12 +60,6 @@ function train!(node::AccNode, X::T) where {T <: AbstractVector{Bool}}
     node.memory[X] = get(node.memory, X, node.default) + 1
 
     nothing
-end
-
-function train!(node::AccNode, X::T) where {T <: AbstractMatrix{Bool}}
-    for x in eachrow(X)
-        train!(node, x)
-    end
 end
 
 ################################################################################
