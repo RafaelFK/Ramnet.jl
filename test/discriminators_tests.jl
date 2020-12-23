@@ -1,6 +1,6 @@
 using ramnet.Utils: stack
 using ramnet.Partitioners: RandomPartitioner, LinearPartitioner
-using ramnet.Models.Nodes: RegressionNode
+using ramnet.Models.Nodes: RegressionNode, GeneralizedRegressionNode
 using ramnet.Models: train!, predict
 using ramnet.Models: Discriminator, BleachingDiscriminator
 
@@ -106,4 +106,35 @@ end
     train!(regressor, X_train, y_train)
 
     @test predict(regressor, X_test) ≈ y_test_discounted
+end
+
+@testset "Generalized Regression Discriminator" begin
+    X_train = Bool[
+        1 1 0 0 0 0
+        1 1 1 0 0 0
+        1 1 1 1 0 0
+        1 1 1 1 1 0
+        1 1 1 1 1 1
+    ]
+
+    y_train = Float64[1, 2, 3, 4, 5]
+
+    X_test = Bool[
+        0 0 0 0 0 0
+        1 0 0 0 0 0
+        1 1 0 0 0 0
+        1 1 1 1 1 1
+        1 1 1 0 0 0
+    ]
+
+    # Fixed α
+    y_test = Float64[5.25 / 4, 5.25 / 4, 13.3125 / 6, 20.8125 / 6, 14.3125 / 6]
+
+    partitioner = LinearPartitioner(6, 2)
+
+    regressor = Discriminator{LinearPartitioner,GeneralizedRegressionNode}(partitioner; α=0.5)
+
+    train!(regressor, X_train, y_train)
+
+    @test predict(regressor, X_test) == y_test
 end
