@@ -2,7 +2,13 @@ module Nodes
 
 import ..AbstractModel, ..train!, ..predict
 
-export AbstractNode, DictNode, AccNode, RegressionNode, GeneralizedRegressionNode
+export AbstractNode,
+    AbstractClassificationNode,
+    AbstractRegressionNode,
+    DictNode, 
+    AccNode,
+    RegressionNode,
+    GeneralizedRegressionNode
 
 # TODO: There is nothing preventing different sized inputs
 abstract type AbstractNode <: AbstractModel end

@@ -46,13 +46,23 @@ const BleachingDiscriminator  = Discriminator{RandomPartitioner,AccNode} # This 
 RegressionDiscriminator = Discriminator{RandomPartitioner,RegressionNode}
 GeneralizedRegressionDiscriminator = Discriminator{RandomPartitioner,GeneralizedRegressionNode}
 
-function train!(d::Discriminator, X::T) where {T <: AbstractVecOrMat{Bool}}
+# Generic functions
+function train!(d::Discriminator{<:AbstractPartitioner,<:AbstractClassificationNode}, X::T) where {T <: AbstractVecOrMat{Bool}}
     for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         Nodes.train!(node, x)
     end
 
     return nothing
 end
+
+function train!(d::Discriminator{<:AbstractPartitioner,<:AbstractRegressionNode}, X, y)
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
+        Nodes.train!(node, x, y)
+    end
+
+    return nothing
+end
+
 # TODO: These predict operations might not be type-stable when the node type is
 #       AccNode: They might return booleans and vectors of booleans or integers
 #       and vectors of integers, respectively
@@ -108,14 +118,6 @@ end
 ################################################################################
 # Specialized training and prediction methods for the regresion variant
 
-function train!(d::Discriminator{P,RegressionNode}, X, y) where {P <: AbstractPartitioner}
-    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
-        Nodes.train!(node, x, y)
-    end
-
-    return nothing
-end
-
 function predict(d::Discriminator{P,RegressionNode}, X::AbstractVector{Bool}) where {P <: AbstractPartitioner}
     partial_count = zero(Int)
     estimate = zero(Float64)
@@ -141,14 +143,6 @@ end
 ################################################################################
 # Specialized training and prediction methods for the generalized regresion discriminator
 
-function train!(d::Discriminator{P,GeneralizedRegressionNode}, X, y) where {P <: AbstractPartitioner}
-    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
-        Nodes.train!(node, x, y)
-    end
-
-    return nothing
-end
-
 # This expects that α is a constant
 function predict(d::Discriminator{P,GeneralizedRegressionNode}, X::AbstractVector{Bool}) where {P <: AbstractPartitioner}
     running_numerator = zero(Float64)
@@ -171,4 +165,3 @@ end
 function predict(d::Discriminator{P,GeneralizedRegressionNode}, X::AbstractMatrix{Bool}) where {P <: AbstractPartitioner}
     [predict(d, x) for x in eachrow(X)]
 end
-
