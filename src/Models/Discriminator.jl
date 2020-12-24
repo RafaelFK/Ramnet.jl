@@ -43,7 +43,7 @@ Discriminator(args...; kargs...) = Discriminator{RandomPartitioner,DictNode}(arg
 const BitDiscriminator        = Discriminator{RandomPartitioner,DictNode{BitVector}}
 const BleachingDiscriminator  = Discriminator{RandomPartitioner,AccNode} # This should be the default classification discriminator
 
-RegressionDiscriminator = Discriminator{RandomPartitioner,RegressionNode{Float64}}
+RegressionDiscriminator = Discriminator{RandomPartitioner,RegressionNode}
 GeneralizedRegressionDiscriminator = Discriminator{RandomPartitioner,GeneralizedRegressionNode}
 
 function train!(d::Discriminator, X::T) where {T <: AbstractVecOrMat{Bool}}
@@ -108,7 +108,7 @@ end
 ################################################################################
 # Specialized training and prediction methods for the regresion variant
 
-function train!(d::Discriminator{P,RegressionNode{S}}, X, y) where {P <: AbstractPartitioner,S <: Real}
+function train!(d::Discriminator{P,RegressionNode}, X, y) where {P <: AbstractPartitioner}
     for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         Nodes.train!(node, x, y)
     end
@@ -116,12 +116,16 @@ function train!(d::Discriminator{P,RegressionNode{S}}, X, y) where {P <: Abstrac
     return nothing
 end
 
-function predict(d::Discriminator{P,RegressionNode{S}}, X::AbstractVector{Bool}) where {P <: AbstractPartitioner,S <: Real}
+function predict(d::Discriminator{P,RegressionNode}, X::AbstractVector{Bool}) where {P <: AbstractPartitioner}
     partial_count = zero(Int)
-    estimate = zero(S)
+    estimate = zero(Float64)
 
     for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
         count, sum = predict(node, x)
+
+        if node.γ != 1.0
+            count = (1 - node.γ^count) / (1 - node.γ)
+        end
 
         partial_count += count
         estimate += sum
@@ -130,7 +134,7 @@ function predict(d::Discriminator{P,RegressionNode{S}}, X::AbstractVector{Bool})
     return partial_count == 0 ? estimate : estimate / partial_count
 end
 
-function predict(d::Discriminator{P,RegressionNode{S}}, X::AbstractMatrix{Bool}) where {P <: AbstractPartitioner,S <: Real}
+function predict(d::Discriminator{P,RegressionNode}, X::AbstractMatrix{Bool}) where {P <: AbstractPartitioner}
     [predict(d, x) for x in eachrow(X)]
 end
 

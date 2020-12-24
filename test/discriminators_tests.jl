@@ -76,7 +76,7 @@ end
 
     partitioner = LinearPartitioner(6, 2)
 
-    regressor = Discriminator{LinearPartitioner,RegressionNode{Float64}}(partitioner; γ=1.0)
+    regressor = Discriminator{LinearPartitioner,RegressionNode}(partitioner; γ=1.0)
 
     train!(regressor, X_train, y_train)
 
@@ -101,7 +101,7 @@ end
         (s([1,2,3,4,5]) + s([2]) + s([1,2,3])) / (e(5) + e(1) + e(3))
     ]
 
-    regressor = Discriminator{LinearPartitioner,RegressionNode{Float64}}(partitioner; γ=0.7)
+    regressor = Discriminator{LinearPartitioner,RegressionNode}(partitioner; γ=0.7)
 
     train!(regressor, X_train, y_train)
 

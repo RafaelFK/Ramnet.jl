@@ -27,6 +27,10 @@ function predict(node::N, X::T; kargs...) where {N <: AbstractNode,T <: Abstract
     return [predict(node, x; kargs...) for x in eachrow(X)]
 end
 
+function predict(node::N, X::T) where {N <: AbstractRegressionNode,T <: AbstractVector{Bool}}
+    return get(node.memory, X, node.default)
+end
+
 # If both BitVectors and BoolVectors hash to the same value when they have the same
 # content, does it matter which type I choose as key for the underlying dictionary?
 # I should check if both DictNode{BitVector} and DictNode{Vector{Bool}} accept any
@@ -63,64 +67,51 @@ function train!(node::AccNode, X::T) where {T <: AbstractVector{Bool}}
 end
 
 ################################################################################
-struct RegressionNode{T <: Real} <: AbstractNode
+struct RegressionNode <: AbstractRegressionNode
     γ::Float64
-    memory::Dict{Vector{Bool},Tuple{Int,T}}
+    default::Tuple{Int,Float64}
+    memory::Dict{Vector{Bool},Tuple{Int,Float64}}
 
-    function RegressionNode{T}(γ, memory) where {T <: Real}
+    function RegressionNode(γ, default, memory)
         if !(0.0 ≤ γ ≤ 1.0)
             throw(DomainError(γ, "`γ` must lie in the [0, 1] interval"))
         end
 
-        new{T}(γ, memory)
+        new(γ, default, memory)
     end
 end
 
-RegressionNode{T}(;γ=1.0) where {T <: Real} = RegressionNode{T}(γ, Dict{Vector{Bool},Tuple{Int,T}}())
-RegressionNode(;γ=1.0) = RegressionNode{Float64}(;γ)
+# RegressionNode{T}(;γ=1.0, default=(zero(Int), zero(T))) where {T <: Real} = RegressionNode{T}(γ, default, Dict{Vector{Bool},Tuple{Int,T}}())
+RegressionNode(;γ=1.0, default=(zero(Int), zero(Float64))) = RegressionNode(γ, default, Dict{Vector{Bool},Tuple{Int,Float64}}())
 
-function train!(node::RegressionNode{S}, X::T, y::S) where {S <: Real,T <: AbstractVector{Bool}}
-    count, sum = get(node.memory, X, (zero(Int), zero(S)))
+function train!(node::RegressionNode, X::T, y::Float64) where {T <: AbstractVector{Bool}}
+    count, sum = get(node.memory, X, node.default)
     
     node.memory[X] = (count + 1, node.γ * sum + y)
 
     nothing
 end
 
-function train!(node::RegressionNode{S}, X::T, y::AbstractVector{S}) where {S <: Real,T <: AbstractMatrix{Bool}}
+function train!(node::RegressionNode, X::T, y::AbstractVector{Float64}) where {T <: AbstractMatrix{Bool}}
     for (x, target) in Iterators.zip(eachrow(X), y)
         train!(node, x, target)
     end
 end
 
-function predict(node::RegressionNode{S}, X::T) where {S <: Real,T <: AbstractVector{Bool}}
-    count, sum = get(node.memory, X, (zero(Int), zero(S)))
-
-    if count == 0
-        denominator = 0
-    elseif node.γ != 1.0
-        denominator = (1 - node.γ^count) / (1 - node.γ)
-    else
-        denominator = count
-    end
-
-    # return count == 0 ? (0, 0) : (count, sum)
-    return (denominator, sum)
-end
-
 ################################################################################
 # TODO: Enforce α to be greater than zero
-struct GeneralizedRegressionNode <: AbstractNode
+struct GeneralizedRegressionNode <: AbstractRegressionNode
     α::Float64
+    default::Tuple{Int,Float64}
     memory::Dict{Vector{Bool},Tuple{Int,Float64}}
 end
 
 
-GeneralizedRegressionNode(;α::Float64) = GeneralizedRegressionNode(α, Dict{Vector{Bool},Tuple{Int,Float64}}())
+GeneralizedRegressionNode(;α::Float64, default=(zero(Int), zero(Float64))) = GeneralizedRegressionNode(α, default, Dict{Vector{Bool},Tuple{Int,Float64}}())
 
 # TODO: Make stepsize function that takes in a node and returns its appropriate α
 function train!(node::GeneralizedRegressionNode, X::T, y::Float64) where {T <: AbstractVector{Bool}}
-    count, estimate = get(node.memory, X, (zero(Int), zero(Float64)))
+    count, estimate = get(node.memory, X, node.default)
     
     node.memory[X] = (count + 1, estimate + node.α * (y - estimate))
     # node.dict[X] = (count + 1, estimate + 1 / (count + 1) * (y - estimate))
@@ -132,10 +123,6 @@ function train!(node::GeneralizedRegressionNode, X::T, y::AbstractVector{Float64
     for (x, target) in Iterators.zip(eachrow(X), y)
         train!(node, x, target)
     end
-end
-
-function predict(node::GeneralizedRegressionNode, X::T) where {T <: AbstractVector{Bool}}
-    get(node.memory, X, (zero(Int), zero(Float64)))
 end
 
 end
