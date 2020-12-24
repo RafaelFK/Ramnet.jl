@@ -63,10 +63,10 @@ function train!(d::Discriminator{<:AbstractPartitioner,<:AbstractRegressionNode}
     return nothing
 end
 
-# TODO: Output response in relative terms? (i.e. divide by the number of nodes)
 initial_response(::AbstractVector{Bool}) = zero(Int)
 initial_response(X::AbstractMatrix{Bool}) = zeros(Int, size(X, 1))
 
+# TODO: Output response in relative terms? (i.e. divide by the number of nodes)
 function predict(d::Discriminator{<:AbstractPartitioner,<:AbstractClassificationNode}, X::AbstractVecOrMat{Bool}; b::Int=0)
     response = initial_response(X)
 
@@ -75,6 +75,10 @@ function predict(d::Discriminator{<:AbstractPartitioner,<:AbstractClassification
     end
 
     return response
+end
+
+function predict(d::Discriminator{<:AbstractPartitioner,<:AbstractRegressionNode}, X::AbstractMatrix{Bool})
+    [predict(d, x) for x in eachrow(X)]
 end
 
 ################################################################################
@@ -98,10 +102,6 @@ function predict(d::Discriminator{P,RegressionNode}, X::AbstractVector{Bool}) wh
     return partial_count == 0 ? estimate : estimate / partial_count
 end
 
-function predict(d::Discriminator{P,RegressionNode}, X::AbstractMatrix{Bool}) where {P <: AbstractPartitioner}
-    [predict(d, x) for x in eachrow(X)]
-end
-
 ################################################################################
 # Specialized training and prediction methods for the generalized regresion discriminator
 
@@ -115,15 +115,10 @@ function predict(d::Discriminator{P,GeneralizedRegressionNode}, X::AbstractVecto
 
         α = node.α
         if count != 0
-            # α = 1 / count
             running_numerator += estimate / α
             running_denominator += 1 / α
         end
     end
 
     return running_denominator == 0 ? zero(Float64) : running_numerator / running_denominator
-end
-
-function predict(d::Discriminator{P,GeneralizedRegressionNode}, X::AbstractMatrix{Bool}) where {P <: AbstractPartitioner}
-    [predict(d, x) for x in eachrow(X)]
 end
