@@ -27,6 +27,13 @@ function predict(node::N, X::T; kargs...) where {N <: AbstractNode,T <: Abstract
     return [predict(node, x; kargs...) for x in eachrow(X)]
 end
 
+
+function train!(node::N, X::T, y::AbstractVector{Float64}) where {N <: AbstractRegressionNode,T <: AbstractMatrix{Bool}}
+    for (x, target) in Iterators.zip(eachrow(X), y)
+        train!(node, x, target)
+    end
+end
+
 function predict(node::N, X::T) where {N <: AbstractRegressionNode,T <: AbstractVector{Bool}}
     return get(node.memory, X, node.default)
 end
@@ -81,7 +88,6 @@ struct RegressionNode <: AbstractRegressionNode
     end
 end
 
-# RegressionNode{T}(;γ=1.0, default=(zero(Int), zero(T))) where {T <: Real} = RegressionNode{T}(γ, default, Dict{Vector{Bool},Tuple{Int,T}}())
 RegressionNode(;γ=1.0, default=(zero(Int), zero(Float64))) = RegressionNode(γ, default, Dict{Vector{Bool},Tuple{Int,Float64}}())
 
 function train!(node::RegressionNode, X::T, y::Float64) where {T <: AbstractVector{Bool}}
@@ -90,12 +96,6 @@ function train!(node::RegressionNode, X::T, y::Float64) where {T <: AbstractVect
     node.memory[X] = (count + 1, node.γ * sum + y)
 
     nothing
-end
-
-function train!(node::RegressionNode, X::T, y::AbstractVector{Float64}) where {T <: AbstractMatrix{Bool}}
-    for (x, target) in Iterators.zip(eachrow(X), y)
-        train!(node, x, target)
-    end
 end
 
 ################################################################################
@@ -114,15 +114,8 @@ function train!(node::GeneralizedRegressionNode, X::T, y::Float64) where {T <: A
     count, estimate = get(node.memory, X, node.default)
     
     node.memory[X] = (count + 1, estimate + node.α * (y - estimate))
-    # node.dict[X] = (count + 1, estimate + 1 / (count + 1) * (y - estimate))
 
     nothing
-end
-
-function train!(node::GeneralizedRegressionNode, X::T, y::AbstractVector{Float64}) where {T <: AbstractMatrix{Bool}}
-    for (x, target) in Iterators.zip(eachrow(X), y)
-        train!(node, x, target)
-    end
 end
 
 end
