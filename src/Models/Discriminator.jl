@@ -63,53 +63,15 @@ function train!(d::Discriminator{<:AbstractPartitioner,<:AbstractRegressionNode}
     return nothing
 end
 
-# TODO: These predict operations might not be type-stable when the node type is
-#       AccNode: They might return booleans and vectors of booleans or integers
-#       and vectors of integers, respectively
-#       It turns out it is type-stable because I initialize response with a Int
-#       and vector of Ints, respectively 
 # TODO: Output response in relative terms? (i.e. divide by the number of nodes)
-# TODO: Can I merge this two functions into a single generic one? Most of the
-#       body is the same.
-function predict(d::Discriminator, X::T) where {T <: AbstractVector{Bool}}
-    response = zero(Int)
+initial_response(::AbstractVector{Bool}) = zero(Int)
+initial_response(X::AbstractMatrix{Bool}) = zeros(Int, size(X, 1))
+
+function predict(d::Discriminator{<:AbstractPartitioner,<:AbstractClassificationNode}, X::AbstractVecOrMat{Bool}; b::Int=0)
+    response = initial_response(X)
 
     for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
-        response += Nodes.predict(node, x)
-    end
-
-    return response
-end
-
-function predict(d::Discriminator, X::T) where {T <: AbstractMatrix{Bool}}
-    response = zeros(Int, size(X, 1))
-
-    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
-        response += Nodes.predict(node, x)
-    end
-
-    return response
-end
-
-# I should be able to avoid all this replication. Should I just make the 
-# bleaching threshold available to all discriminator types? The problem is that
-# with discriminators that use DictNode, any value for b other than 0 doesn't
-# make sense
-function predict(d::BleachingDiscriminator, X::T; b=0) where {T <: AbstractVector{Bool}}
-    response = zero(Int)
-
-    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
-        response += Nodes.predict(node, x; b)
-    end
-
-    return response
-end
-
-function predict(d::BleachingDiscriminator, X::T; b=0) where {T <: AbstractMatrix{Bool}}
-    response = zeros(Int, size(X, 1))
-
-    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
-        response += Nodes.predict(node, x; b)
+        response += predict(node, x; b)
     end
 
     return response
