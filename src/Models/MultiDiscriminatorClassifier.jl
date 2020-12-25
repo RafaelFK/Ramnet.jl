@@ -29,7 +29,7 @@ end
 MultiDiscriminatorClassifier{C}(args...; kargs...) where C = 
     MultiDiscriminatorClassifier{C,Discriminator}(args...; kargs...)
 
-# TODO: Have a default target type, such as Int
+# Default target type is 'Int'
 MultiDiscriminatorClassifier(args...; kargs...) = MultiDiscriminatorClassifier{Int}(args...; kargs...)
 
 function train!(model::MultiDiscriminatorClassifier{C,N}, X::T, y::C) where {T <: AbstractVector{Bool}, C, N <: Discriminator}
@@ -55,32 +55,7 @@ function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::AbstractVector{
 end
 
 # TODO: Check if model was trained
-function predict(model::MultiDiscriminatorClassifier{C}, X::T) where {T <: AbstractVector{Bool},C}
-    largest_response = -1
-    best_category = first(keys(model.discriminators))
-
-    for (category, discriminator) in model.discriminators
-        response = predict(discriminator, X)
-
-        if response > largest_response
-            largest_response = response
-            best_category = category
-        end
-    end
-
-    return best_category
-end
-
-function predict(model::MultiDiscriminatorClassifier{C}, X::AbstractMatrix{Bool}) where {C}
-    return C[predict(model, row) for row in eachrow(X)]
-end
-
-function predict_response(model::MultiDiscriminatorClassifier{C}, X::T) where {T <: AbstractVecOrMat{Bool},C}
-    Dict(k => predict(d, X) for (k,d) in model.discriminators)
-end
-
-# Once again, a should be able to avoid this replication
-function predict(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T; b=0) where {T <: AbstractVector{Bool},C}
+function predict(model::MultiDiscriminatorClassifier{C}, X::T; b::Int=0) where {T <: AbstractVector{Bool},C}
     largest_response = -1
     best_category = first(keys(model.discriminators))
 
@@ -96,8 +71,12 @@ function predict(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, 
     return best_category
 end
 
-function predict(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::AbstractMatrix{Bool}; b=0) where {C}
+function predict(model::MultiDiscriminatorClassifier{C}, X::AbstractMatrix{Bool}; b::Int=0) where {C}
     return C[predict(model, row; b) for row in eachrow(X)]
+end
+
+function predict_response(model::MultiDiscriminatorClassifier{C}, X::T) where {T <: AbstractVecOrMat{Bool},C}
+    Dict(k => predict(d, X) for (k,d) in model.discriminators)
 end
 
 function predict_response(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T; b=0) where {T <: AbstractVecOrMat{Bool},C}
