@@ -1,5 +1,5 @@
 using ramnet.Utils: stack
-using ramnet.Models: train!, predict, predict_response, predict_bleached_response, predict_bleached
+using ramnet.Models: train!, predict, predict_response
 using ramnet.Models: MultiDiscriminatorClassifier, BleachingDiscriminator
 
 @testset "MultiDiscriminatorClassifier" begin
@@ -61,9 +61,11 @@ using ramnet.Models: MultiDiscriminatorClassifier, BleachingDiscriminator
     # Simulating ambiguity. "Off" target is also trained with the all_active input
     train!(model_b, stack(all_active, all_active), ["On", "Off"])
 
-    @test predict_bleached_response(model_b, all_active) == Dict("On" => 3, "Off" => 0)
-    @test predict_bleached_response(model_b, all_inactive) == Dict("On" => 0, "Off" => 3)
-    @test predict_bleached(model_b, X) == ["On", "Off"]
+    @test predict_response(model_b, all_active; b=:linear) == Dict("On" => 3, "Off" => 0)
+    @test predict_response(model_b, all_inactive; b=:linear) == Dict("On" => 0, "Off" => 3)
+    # Test with multiple inputs (last to in one go)
+    @test predict_response(model_b, X; b=:linear) == Dict("On" => [3,0], "Off" => [0,3])
+    @test predict(model_b, X; b=:linear) == ["On", "Off"]
 
     # Future tests:
     # - predict over model trained on a single pattern

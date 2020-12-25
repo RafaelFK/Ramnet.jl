@@ -2,9 +2,7 @@ module Models
 
 export train!,
   predict,
-  predict_response,
-  predict_bleached_response,
-  predict_bleached
+  predict_response
 
 # A model (m) must implement the following functions:
 #
@@ -16,8 +14,6 @@ abstract type AbstractModel end
 function train! end
 function predict end
 function predict_response end
-function predict_bleached_response end
-function predict_bleached end
 
 # I can provide a default implementation of train! and predict for matrix inputs,
 # assuming that their vector counterparts have already been implemented somewhere

@@ -81,6 +81,9 @@ function predict(d::Discriminator{<:AbstractPartitioner,<:AbstractRegressionNode
     [predict(d, x) for x in eachrow(X)]
 end
 
+# TODO: In the context of discriminators, predict and predict_response are the same thing.
+#       Implement predict_response as an alias to predict
+
 ################################################################################
 # Specialized training and prediction methods for the regresion variant
 

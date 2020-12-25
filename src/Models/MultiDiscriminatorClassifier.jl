@@ -32,7 +32,7 @@ MultiDiscriminatorClassifier{C}(args...; kargs...) where C =
 # Default target type is 'Int'
 MultiDiscriminatorClassifier(args...; kargs...) = MultiDiscriminatorClassifier{Int}(args...; kargs...)
 
-function train!(model::MultiDiscriminatorClassifier{C,N}, X::T, y::C) where {T <: AbstractVector{Bool}, C, N <: Discriminator}
+function train!(model::MultiDiscriminatorClassifier{C,N}, X::AbstractVector{Bool}, y::C) where {C,N<:Discriminator}
     if isnothing(model.partitioner)
         model.partitioner = RandomPartitioner(length(X), model.n; seed=model.seed)
     end
@@ -42,7 +42,7 @@ function train!(model::MultiDiscriminatorClassifier{C,N}, X::T, y::C) where {T <
     end, X)
 end
 
-function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::AbstractVector{C}) where {T <: AbstractMatrix{Bool}, C}
+function train!(model::MultiDiscriminatorClassifier{C}, X::AbstractMatrix{Bool}, y::AbstractVector{C}) where {C}
     size(X, 1) != size(y, 1) && throw(
         DimensionMismatch("Number of observations (rows in X) must match the number of targets (elements in y)"))
         
@@ -54,8 +54,13 @@ function train!(model::MultiDiscriminatorClassifier{C}, X::T, y::AbstractVector{
     end
 end
 
+# TODO: Add predict and predict_response umbrella methods where the bleaching threshold is a keyword argument for
+#       convenience.
+predict(model::MultiDiscriminatorClassifier{C}, X; b=:none) where {C} = predict(model, X, b)
+predict_response(model::MultiDiscriminatorClassifier{C}, X; b=:none) where {C} = predict_response(model, X, b)
+
 # TODO: Check if model was trained
-function predict(model::MultiDiscriminatorClassifier{C}, X::T; b::Int=0) where {T <: AbstractVector{Bool},C}
+function predict(model::MultiDiscriminatorClassifier{C}, X::AbstractVector{Bool}, b::Int=0) where {C}
     largest_response = -1
     best_category = first(keys(model.discriminators))
 
@@ -71,15 +76,11 @@ function predict(model::MultiDiscriminatorClassifier{C}, X::T; b::Int=0) where {
     return best_category
 end
 
-function predict(model::MultiDiscriminatorClassifier{C}, X::AbstractMatrix{Bool}; b::Int=0) where {C}
+function predict(model::MultiDiscriminatorClassifier{C}, X::AbstractMatrix{Bool}, b::Int) where {C}
     return C[predict(model, row; b) for row in eachrow(X)]
 end
 
-function predict_response(model::MultiDiscriminatorClassifier{C}, X::T) where {T <: AbstractVecOrMat{Bool},C}
-    Dict(k => predict(d, X) for (k,d) in model.discriminators)
-end
-
-function predict_response(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T; b=0) where {T <: AbstractVecOrMat{Bool},C}
+function predict_response(model::MultiDiscriminatorClassifier{C}, X::AbstractVecOrMat{Bool}, b::Int) where {C}
     Dict(k => predict(d, X; b) for (k,d) in model.discriminators)
 end
 
@@ -93,10 +94,23 @@ function response_tie(responses)
     return responses[p[1]] == responses[p[2]]
 end
 
+const bleaching_policies = [:none, :linear]
+
+function predict_response(model::MultiDiscriminatorClassifier{C}, X::AbstractVecOrMat{Bool}, b::Symbol) where {C}
+    if b == :none
+        return predict_response(model, X, 0)
+    elseif b == :linear
+        return predict_response_linear_bleaching(model, X)
+    else
+        throw(DomainError(b, "Unknown bleaching policy"))
+    end
+end
+
 # Prediction with linear search for the bleaching threshold
-function predict_bleached_response(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T) where {T <: AbstractVector{Bool},C}
-    b = 0
-    responses = predict_response(model, X; b)
+# TODO: This could simply be called predict_response with a b=:linear argument
+function predict_response_linear_bleaching(model::MultiDiscriminatorClassifier{C}, X::AbstractVector{Bool}) where {C}
+    b = zero(Int)
+    responses = predict_response(model, X, b)
 
     while true
         response_values = collect(values(responses))
@@ -106,12 +120,28 @@ function predict_bleached_response(model::MultiDiscriminatorClassifier{C,Bleachi
         end
 
         b += 1
-        responses = predict_response(model, X; b)
+        responses = predict_response(model, X, b)
     end
 end
 
-function predict_bleached(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T) where {T <: AbstractVector{Bool},C}
-    responses = predict_bleached_response(model, X)
+function predict_response_linear_bleaching(model::MultiDiscriminatorClassifier{C}, X::AbstractMatrix{Bool}) where {C}
+    response = Dict(k => Int[] for k in keys(model.discriminators))
+
+    mergewith!(push!, response, collect(predict_response_linear_bleaching(model, x) for x in eachrow(X))...)
+end
+
+function predict(model::MultiDiscriminatorClassifier{C}, X::AbstractVecOrMat{Bool}, b::Symbol) where {C}
+    if b == :none
+        return predict(model, X, 0)
+    elseif b == :linear
+        return predict_bleached(model, X)
+    else
+        throw(DomainError(b, "Unknown bleaching policy"))
+    end
+end
+
+function predict_bleached(model::MultiDiscriminatorClassifier{C}, X::AbstractVector{Bool}) where {C}
+    responses = predict_response_linear_bleaching(model, X)
 
     if all(isequal(0), values(responses))
         return rand(keys(responses))
@@ -121,6 +151,6 @@ function predict_bleached(model::MultiDiscriminatorClassifier{C,BleachingDiscrim
 end
 
 # This is identical to other matrix-predicts. Maybe this could already be provided by the model interface
-function predict_bleached(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::T) where {T <: AbstractMatrix{Bool},C}
+function predict_bleached(model::MultiDiscriminatorClassifier{C,BleachingDiscriminator}, X::AbstractMatrix{Bool}) where {C}
     return C[predict_bleached(model, row) for row in eachrow(X)]
 end
