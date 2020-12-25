@@ -30,6 +30,7 @@ MultiDiscriminatorClassifier{C}(args...; kargs...) where C =
     MultiDiscriminatorClassifier{C,Discriminator}(args...; kargs...)
 
 # TODO: Have a default target type, such as Int
+MultiDiscriminatorClassifier(args...; kargs...) = MultiDiscriminatorClassifier{Int}(args...; kargs...)
 
 function train!(model::MultiDiscriminatorClassifier{C,N}, X::T, y::C) where {T <: AbstractVector{Bool}, C, N <: Discriminator}
     if isnothing(model.partitioner)
