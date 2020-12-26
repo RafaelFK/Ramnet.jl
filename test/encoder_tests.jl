@@ -1,6 +1,6 @@
-using ramnet.Encoders: Thermometer, encode!, encode
+using ramnet.Encoders: Thermometer, CircularThermometer, encode!, encode
 
-@testset "Thermometer encoder" begin
+@testset "Simple Thermometer" begin
     ## Thermometer instantiation
 
     @test_throws ArgumentError Thermometer(0.0, -20.0, 10)
@@ -130,4 +130,52 @@ using ramnet.Encoders: Thermometer, encode!, encode
         ), (1, :))
     )
 
+end
+
+@testset "Circular Thermometer" begin
+    @test_throws ArgumentError CircularThermometer(10, 1, 5)
+    @test_throws DomainError CircularThermometer(0, 1, 1)
+
+    thermo = CircularThermometer(Float64, 0, 1, 5)
+
+    @test encode(thermo, 0.0) == Bool[1, 1, 0, 0, 0]
+    @test encode(thermo, 0.2) == Bool[0, 1, 1, 0, 0]
+    @test encode(thermo, 0.4) == Bool[0, 0, 1, 1, 0]
+    @test encode(thermo, [0.2, 0.4]) == Bool[0, 1, 1, 0, 0, 0, 0, 1, 1, 0]
+    @test encode(thermo, [0.2, 0.4];flat=false) == Bool[
+      0 0
+      1 0
+      1 1
+      0 1
+      0 0
+    ]
+
+    @test encode(thermo, [
+      0.0 0.2
+      0.4 0.6
+    ]) == Bool[
+      1 1 0 0 0 0 1 1 0 0
+      0 0 1 1 0 0 0 0 1 1
+    ]
+
+    @test encode(thermo, [
+      0.0 0.2
+      0.4 0.6
+    ]; flat=false) == cat(
+      [
+        1 0
+        1 1
+        0 1
+        0 0
+        0 0
+      ],
+      [
+        0 0
+        0 0
+        1 0
+        1 1
+        0 1
+      ];
+      dims=3
+    )
 end
