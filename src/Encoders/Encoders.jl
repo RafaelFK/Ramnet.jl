@@ -1,11 +1,15 @@
 module Encoders
 
-export encode!, encode
+export encode
 
 abstract type AbstractEncoder end
 
 function encode! end
 function encode end
+
+# TODO: Consider making 'encode!' the "Internal usage" one
+# Internal usage function
+# function _encode! end
 
 ########################### Generic encoding methods ###########################
 function encode(encoder::E, x::T) where {E <: AbstractEncoder,T <: Real}
@@ -17,8 +21,14 @@ end
 function encode!(encoder::E, x::AbstractVector{T}, pattern::AbstractMatrix{Bool}) where {E <: AbstractEncoder,T <: Real}
     validate_input_output(encoder, x, pattern)
 
-    for (i, col) in Iterators.enumerate(eachcol(pattern))
-        encode!(encoder, x[i], col)
+    if encoder.min isa AbstractVector
+        for (i, col) in Iterators.enumerate(eachcol(pattern))
+            encode!(encoder, encoder.min[i], encoder.max[i], x[i], col)
+        end
+    else
+        for (i, col) in Iterators.enumerate(eachcol(pattern))
+            encode!(encoder, x[i], col)
+        end
     end
 
     pattern
@@ -28,8 +38,14 @@ end
 function encode!(encoder::E, x::AbstractVector{T}, pattern::AbstractVector{Bool}) where {E <: AbstractEncoder,T <: Real}
     validate_input_output(encoder, x, pattern)
 
-    for (i, slice) in Iterators.enumerate(Iterators.partition(pattern, encoder.resolution))
-        encode!(encoder, x[i], slice)
+    if encoder.min isa AbstractVector
+        for (i, slice) in Iterators.enumerate(Iterators.partition(pattern, encoder.resolution))
+            encode!(encoder, encoder.min[i], encoder.max[i], x[i], slice)
+        end
+    else
+        for (i, slice) in Iterators.enumerate(Iterators.partition(pattern, encoder.resolution))
+            encode!(encoder, x[i], slice)
+        end
     end
 
     pattern
@@ -77,10 +93,13 @@ function encode(encoder::E, X::AbstractMatrix{T}; flat=true) where {E <: Abstrac
 end
 
 ########################## Generic validation methods ##########################
-function validate_input_output(encoder::E, ::T, pattern::AbstractVector{Bool}) where {E <: AbstractEncoder,T <: Real}
+function validate_input_output(encoder::E, x::T, pattern::AbstractVector{Bool}) where {E <: AbstractEncoder,T <: Real}
+    # If more then one minimum/maximum were especified, it doesn't make sense to try to encode a scalar
+    length(encoder.min) != 1 && throw(DomainError(x, "expected vector of length $(length(encoder.min))"))
+
     length(pattern) != encoder.resolution && throw(
-    DimensionMismatch(
-      "output pattern must have the length of the thermometer's resolution"))
+      DimensionMismatch(
+        "output pattern must have the length of the thermometer's resolution"))
 
     nothing
 end
@@ -94,6 +113,10 @@ function validate_input_output(encoder::E, x::AbstractVector{T}, pattern::Abstra
       DimensionMismatch(
           "the number of columns of the output pattern must equal x's length"))
 
+    encoder.min isa AbstractVector && length(x) != length(encoder.min) && throw(
+      DimensionMismatch(
+        "the length of x must match the lengths of the min and max vectors"))
+
     nothing
 end
 
@@ -102,21 +125,28 @@ function validate_input_output(encoder::E, x::AbstractVector{T}, pattern::Abstra
       DimensionMismatch(
         "the length of the output pattern must equal the thermometer's resolution times the length of x"))
 
+    encoder.min isa AbstractVector && length(x) != length(encoder.min) && throw(
+      DimensionMismatch(
+        "the length of x must match the lengths of the min and max vectors"))
     nothing
 end
 
 function validate_input_output(encoder::E, X::AbstractMatrix{T}, pattern::AbstractArray{Bool,3}) where {E <: AbstractEncoder,T <: Real}
     size(pattern, 1) != encoder.resolution && throw(
-    DimensionMismatch(
-      "the number of rows of the output pattern must equal the thermometer's resolution"))
+      DimensionMismatch(
+        "the number of rows of the output pattern must equal the thermometer's resolution"))
 
     size(pattern, 2) != size(X, 2) && throw(
       DimensionMismatch(
           "the number of columns of the output pattern must equal X's number of columns"))
 
     size(pattern, 3) != size(X, 1) && throw(
-    DimensionMismatch(
-        "the depth of the output pattern must equal X's number of rows"))
+      DimensionMismatch(
+          "the depth of the output pattern must equal X's number of rows"))
+
+    encoder.min isa AbstractVector && size(X, 2) != length(encoder.min) && throw(
+      DimensionMismatch(
+        "the number of columns of X must match the lengths of the min and max vectors"))
 
     nothing
 end
@@ -129,6 +159,10 @@ function validate_input_output(encoder::E, X::AbstractMatrix{T}, pattern::Abstra
     size(pattern, 2) != size(X, 2) * encoder.resolution && throw(
           DimensionMismatch(
               "the number of columns of the output pattern must equal the thermometer's resolution times X's number of columns"))
+
+    encoder.min isa AbstractVector && size(X, 2) != length(encoder.min) && throw(
+      DimensionMismatch(
+        "the number of columns of X must match the lengths of the min and max vectors"))
 
     nothing
 end

@@ -130,6 +130,14 @@ using ramnet.Encoders: Thermometer, CircularThermometer, encode!, encode
         ), (1, :))
     )
 
+    # Specifying different limits for the components of the input
+    thermo = Thermometer([0.0, 1.0], [1.0, 10.0], 10)
+
+    # When multiple limits are specified, input is expected to be at least 1D
+    @test_throws DomainError encode(thermo, 0.5)
+
+    @test encode(thermo, [0.5, 5]) == vcat(Bool[1,1,1,1,1,0,0,0,0,0], Bool[1,1,1,1,1,0,0,0,0,0])
+    @test encode(thermo, [0.5, 5]; flat=false) == hcat(Bool[1,1,1,1,1,0,0,0,0,0], Bool[1,1,1,1,1,0,0,0,0,0])
 end
 
 @testset "Circular Thermometer" begin
@@ -178,4 +186,9 @@ end
       ];
       dims=3
     )
+
+    # Specifying different limits for the components of the input
+    thermo = CircularThermometer([0.0, 1.0], [1.0, 10.0], 5)
+
+    @test encode(thermo, [0.9, 7.0]) == Bool[1, 0, 0, 0, 1, 0, 0, 0, 1, 1]
 end
