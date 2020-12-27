@@ -9,7 +9,6 @@ Raise a `DimensionMismatch` exception if the input vectors are not all the same
 length. Does nothing otherwise.
 
 # Examples
-
 ```jldoctest
 julia> check_length_consistency([1,2,3], [4,5])
 ERROR: DimensionMismatch("Input vectors should have the same length!")
@@ -29,7 +28,6 @@ Raise a `DimensionMismatch` exception if the input matrices don't have the same
 number of columns. Does nothing otherwise.
 
 # Examples
-
 ```jldoctest
 julia> check_length_consistency([1 2 3; 4 5 6], [7 8; 9 10])
 ERROR: DimensionMismatch("Input vectors should have the same length!")
