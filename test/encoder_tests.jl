@@ -1,4 +1,4 @@
-using ramnet.Encoders: Thermometer, CircularThermometer, encode!, encode
+using Ramnet.Encoders: Thermometer, CircularThermometer, encode!, encode
 
 @testset "Simple Thermometer" begin
     ## Thermometer instantiation

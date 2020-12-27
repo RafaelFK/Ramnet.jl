@@ -1,5 +1,5 @@
 using BenchmarkTools
-using ramnet
+using Ramnet
 using MLDatasets
 
 # Should I make this a standard matrix? I may be benchmarking the transpose operation if it's lazy
@@ -15,7 +15,7 @@ y_train = MNIST.trainlabels()
 # model = MultiDiscriminatorClassifier{Int64}(784, 28; seed=1)
 # train!(model, X_train, y_train)
 
-X_test = transpose(reshape(MNIST.testtensor(), 784, :)) .> 0.5
+X_test = permutedims(reshape(MNIST.testtensor(), 784, :)) .> 0.5
 
 # b_predict = @benchmarkable predict($model, $X_test)
 
@@ -51,8 +51,8 @@ suite["mapper"]["random mapper"]["Iteration"] = @benchmarkable collect(map($mapp
 zero_digits = X_train[findall(y_train .== 0), :]
 tuple = first(map(RandomMapper(784, 28; seed=1), zero_digits))
 
-suite["node"]["dict node"]["train (Vector{Bool})"] = @benchmarkable ramnet.Nodes.train!(node, tuple) setup = (node = ramnet.Nodes.DictNode{Vector{Bool}}())
-suite["node"]["dict node"]["train (BitVector)"] = @benchmarkable ramnet.Nodes.train!(node, tuple) setup = (node = ramnet.Nodes.DictNode{BitVector}())
+suite["node"]["dict node"]["train (Vector{Bool})"] = @benchmarkable Ramnet.Nodes.train!(node, tuple) setup = (node = Ramnet.Nodes.DictNode{Vector{Bool}}())
+suite["node"]["dict node"]["train (BitVector)"] = @benchmarkable Ramnet.Nodes.train!(node, tuple) setup = (node = Ramnet.Nodes.DictNode{BitVector}())
 
 paramspath = joinpath(dirname(@__FILE__), "params.json")
 

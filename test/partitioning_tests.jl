@@ -1,4 +1,4 @@
-using ramnet.Partitioners: 
+using Ramnet.Partitioners: 
 partition,
 RandomPartitioner,
 random_partitioning,

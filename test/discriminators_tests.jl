@@ -1,8 +1,8 @@
-using ramnet.Utils: stack
-using ramnet.Partitioners: RandomPartitioner, LinearPartitioner
-using ramnet.Models.Nodes: RegressionNode, GeneralizedRegressionNode
-using ramnet.Models: train!, predict
-using ramnet.Models: Discriminator, BleachingDiscriminator
+using Ramnet.Utils: stack
+using Ramnet.Partitioners: RandomPartitioner, LinearPartitioner
+using Ramnet.Models.Nodes: RegressionNode, GeneralizedRegressionNode
+using Ramnet.Models: train!, predict
+using Ramnet.Models: Discriminator, BleachingDiscriminator
 
 @testset "Classification Discriminator" begin
     all_active = ones(Bool, 9)

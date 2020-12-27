@@ -1,4 +1,4 @@
-using ramnet.Utils: stack, ambiguity, accuracy
+using Ramnet.Utils: stack, ambiguity, accuracy
 
 @testset "Utilities" begin
     # Stacking vectors

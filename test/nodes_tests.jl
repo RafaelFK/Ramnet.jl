@@ -1,7 +1,7 @@
-using ramnet.Models: train!, predict
-using ramnet.Models.Nodes
+using Ramnet.Models: train!, predict
+using Ramnet.Models.Nodes
 
-using ramnet.Utils: stack
+using Ramnet.Utils: stack
 
 @testset "Nodes" begin
     # Standard Node

@@ -1,4 +1,4 @@
-module ramnet
+module Ramnet
 
 include("Utils.jl")
 
@@ -6,11 +6,11 @@ include("Encoders/Encoders.jl")
 
 include("Partitioners/Partitioners.jl")
 
-using ramnet.Partitioners
+using Ramnet.Partitioners
 export partition, RandomPartitioner, random_partitioning
 
 include("Models/Models.jl")
-using ramnet.Models
+using Ramnet.Models
 export train!, predict
 
 export Discriminator, BitDiscriminator, RegressionDiscriminator, GeneralizedRegressionDiscriminator
