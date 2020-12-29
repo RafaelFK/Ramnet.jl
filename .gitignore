@@ -2,3 +2,5 @@
 /benchmark/*.json
 /examples/.ipynb_checkpoints/
 *.png
+docs/build
+docs/Manifest.toml
