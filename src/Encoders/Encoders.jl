@@ -1,6 +1,6 @@
 module Encoders
 
-export encode
+export AbstractEncoder, encode
 
 abstract type AbstractEncoder end
 
