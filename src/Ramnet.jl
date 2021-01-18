@@ -13,7 +13,11 @@ include("Models/Models.jl")
 using Ramnet.Models
 export train!, predict
 
-export Discriminator, BitDiscriminator, RegressionDiscriminator, GeneralizedRegressionDiscriminator
+export Discriminator,
+  BitDiscriminator,
+  RegressionDiscriminator,
+  FastRegressionDiscriminator,
+  GeneralizedRegressionDiscriminator
 
 export MultiDiscriminatorClassifier
 

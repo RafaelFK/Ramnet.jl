@@ -26,6 +26,7 @@ export Discriminator,
   BitDiscriminator,
   BleachingDiscriminator,
   RegressionDiscriminator,
+  FastRegressionDiscriminator,
   GeneralizedRegressionDiscriminator
 
 include("MultiDiscriminatorClassifier.jl")

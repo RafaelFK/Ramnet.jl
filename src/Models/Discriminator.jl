@@ -43,7 +43,9 @@ Discriminator(args...; kargs...) = Discriminator{RandomPartitioner,DictNode}(arg
 const BitDiscriminator        = Discriminator{RandomPartitioner,DictNode{BitVector}}
 const BleachingDiscriminator  = Discriminator{RandomPartitioner,AccNode} # This should be the default classification discriminator
 
-RegressionDiscriminator = Discriminator{RandomPartitioner,RegressionNode}
+# RegressionDiscriminator = Discriminator{RandomPartitioner,RegressionNode}
+const RegressionDiscriminator = Discriminator{RandomPartitioner,FastRegressionNode}
+const FastRegressionDiscriminator = Discriminator{RandomPartitioner,FastRegressionNode}
 GeneralizedRegressionDiscriminator = Discriminator{RandomPartitioner,GeneralizedRegressionNode}
 
 # Generic functions
@@ -124,4 +126,25 @@ function predict(d::Discriminator{P,GeneralizedRegressionNode}, X::AbstractVecto
     end
 
     return running_denominator == 0 ? zero(Float64) : running_numerator / running_denominator
+end
+
+################################################################################
+# Specialized training and prediction methods for the fast regresion variant
+
+function predict(d::Discriminator{P,FastRegressionNode}, X::AbstractVector{Bool}) where {P <: AbstractPartitioner}
+    partial_count = zero(Int)
+    estimate = zero(Float64)
+
+    for (node, x) in Iterators.zip(d.nodes, partition(d.partitioner, X))
+        count, sum = predict(node, x)
+
+        if node.γ != 1.0
+            count = (1 - node.γ^count) / (1 - node.γ)
+        end
+
+        partial_count += count
+        estimate += sum
+    end
+
+    return partial_count == 0 ? estimate : estimate / partial_count
 end

@@ -8,6 +8,7 @@ export AbstractNode,
     DictNode, 
     AccNode,
     RegressionNode,
+    FastRegressionNode,
     GeneralizedRegressionNode
 
 # TODO: There is nothing preventing different sized inputs
@@ -120,6 +121,36 @@ function train!(node::GeneralizedRegressionNode, X::T, y::Float64) where {T <: A
     count, estimate = get(node.memory, X, node.default)
     
     node.memory[X] = (count + 1, estimate + node.α * (y - estimate))
+
+    nothing
+end
+
+################################################################################
+struct FastRegressionNode <: AbstractRegressionNode
+    γ::Float64
+    default::Tuple{Int,Float64}
+    memory::Dict{UInt64,Tuple{Int,Float64}}
+
+    function FastRegressionNode(γ, default, memory)
+        if !(0.0 ≤ γ ≤ 1.0)
+            throw(DomainError(γ, "`γ` must lie in the [0, 1] interval"))
+        end
+
+        new(γ, default, memory)
+    end
+end
+
+FastRegressionNode(;γ=1.0, default=(zero(Int), zero(Float64))) = FastRegressionNode(γ, default, Dict{UInt64,Tuple{Int,Float64}}())
+
+function predict(node::FastRegressionNode, X::T) where {T <: AbstractVector{Bool}}
+    return get(node.memory, BitVector(X).chunks[1], node.default)
+end
+
+function train!(node::FastRegressionNode, X::T, y::Float64) where {T <: AbstractVector{Bool}}
+    key = BitVector(X).chunks[1]
+    count, sum = get(node.memory, key, node.default)
+    
+    node.memory[key] = (count + 1, node.γ * sum + y)
 
     nothing
 end
