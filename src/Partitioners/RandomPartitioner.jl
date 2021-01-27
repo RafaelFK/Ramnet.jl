@@ -41,3 +41,16 @@ end
 function random_partitioning(X::T, n::Int; seed::Union{Nothing,Int}=nothing) where {T <: AbstractMatrix}
     return partition(RandomPartitioner(size(X, 2), n; seed), X)
 end
+
+# =============================== Experimental =============================== #
+function random_tuples(len::Int, n::Int; seed=Union{Nothing,Int} = nothing)
+    !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
+    len < 0 && throw(DomainError(width, "Length must be non-negative"))
+    n < 1 && throw(DomainError(n, "Partition may not be less then one"))
+    
+    rng = isnothing(seed) ? MersenneTwister() : MersenneTwister(seed) 
+
+    ordering = randperm(rng, len)
+
+    return collect(Iterators.partition(ordering, n))
+end

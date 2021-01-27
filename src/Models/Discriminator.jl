@@ -148,3 +148,73 @@ function predict(d::Discriminator{P,FastRegressionNode}, X::AbstractVector{Bool}
 
     return partial_count == 0 ? estimate : estimate / partial_count
 end
+
+# =============================== Experimental =============================== #
+using ..Encoders
+
+# TODO: If the partitioning is going to be done upfront and from that moment
+#       onwards each node knows how to form its tuples, maybe it's not necessary
+#       for the partitioner to be a member of the Discriminator struct
+struct AltDiscriminator{T <: Real,E <: AbstractEncoder{T}}
+    input_len::Int
+    encoder::E
+    tuples::Vector{Vector{Int}}
+    nodes::Vector{AltRegressionNode}
+end
+
+function AltDiscriminator(input_len::Int, n::Int, encoder::E; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+    max_tuple_size = (UInt == UInt32) ? 32 : 64
+
+    (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
+
+    tuples = random_tuples(input_len * resolution(encoder), n; seed)
+    nodes = [AltRegressionNode(;kargs...) for _ in 1:length(tuples)]
+
+    AltDiscriminator{T,E}(input_len, encoder, tuples, nodes)
+end
+
+function train!(d::AltDiscriminator{T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {T <: Real}
+    length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
+    
+    for (t, node) in Iterators.zip(d.tuples, d.nodes)
+        train!(node, encode(d.encoder, x, t), y)
+    end
+
+    return nothing
+end
+
+function train!(d::AltDiscriminator{T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, y::AbstractVector{Float64}) where {T <: Real}
+    size(X, 1) != d.input_len && throw(DimensionMismatch("expected number of rows of X to be to be $(d.input_len). Got $(size(X, 1))"))
+    size(X, 2) != length(y) && throw(DimensionMismatch("The number of columns of X must match the length of y"))
+    
+    for i in eachindex(y)
+        train!(d, X[:, i], y[i])
+    end
+
+    nothing
+end
+
+function predict(d::AltDiscriminator{T,<:AbstractEncoder{T}}, x::AbstractVector{T}) where {T <: Real}
+    partial_count = zero(Int)
+    estimate = zero(Float64)
+
+    for (t, node) in Iterators.zip(d.tuples, d.nodes)
+        key = encode(d.encoder, x, t)
+        count, sum = predict(node, key)
+
+        if node.γ != 1.0
+            count = (1 - node.γ^count) / (1 - node.γ)
+        end
+
+        partial_count += count
+        estimate += sum
+    end
+
+    return partial_count == 0 ? estimate : estimate / partial_count
+end
+
+function predict(d::AltDiscriminator{T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {T <: Real}
+    [predict(d, x) for x in eachcol(X)]
+end
+
+

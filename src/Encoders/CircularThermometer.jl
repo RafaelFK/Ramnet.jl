@@ -3,7 +3,7 @@
 
 Circular thermometer encoder, used to represent real values as binary patterns.
 """
-struct CircularThermometer{T <: Real} <: AbstractEncoder
+struct CircularThermometer{T <: Real} <: AbstractEncoder{T}
     min::Union{T,AbstractVector{T}}
     max::Union{T,AbstractVector{T}}
     resolution::Int # TODO: This could be unsigned

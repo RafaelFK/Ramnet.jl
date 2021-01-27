@@ -9,7 +9,8 @@ export AbstractNode,
     AccNode,
     RegressionNode,
     FastRegressionNode,
-    GeneralizedRegressionNode
+    GeneralizedRegressionNode,
+    AltRegressionNode
 
 # TODO: There is nothing preventing different sized inputs
 abstract type AbstractNode <: AbstractModel end
@@ -153,6 +154,48 @@ function train!(node::FastRegressionNode, X::T, y::Float64) where {T <: Abstract
     node.memory[key] = (count + 1, node.γ * sum + y)
 
     nothing
+end
+
+# =============================== Experimental =============================== #
+struct AltRegressionNode <: AbstractRegressionNode
+    γ::Float64
+    default::Tuple{Int,Float64}
+    memory::Dict{UInt,Tuple{Int,Float64}}
+
+    function AltRegressionNode(γ, default, memory)
+        if !(0.0 ≤ γ ≤ 1.0)
+            throw(DomainError(γ, "`γ` must lie in the [0, 1] interval"))
+        end
+
+        new(γ, default, memory)
+    end
+end
+
+AltRegressionNode(;γ=1.0, default=(zero(Int), zero(Float64))) = AltRegressionNode(γ, default, Dict{UInt64,Tuple{Int,Float64}}())
+
+function predict(node::AltRegressionNode, X::UInt)
+    return get(node.memory, X, node.default)
+end
+
+function train!(node::AltRegressionNode, X::UInt, y::Float64)
+    count, sum = get(node.memory, X, node.default)
+    
+    node.memory[X] = (count + 1, node.γ * sum + y)
+
+    nothing
+end
+
+# Specialization for the generic methods
+
+function predict(node::AltRegressionNode, X::Vector{UInt}; kargs...)
+    return [predict(node, x; kargs...) for x in X]
+end
+
+
+function train!(node::AltRegressionNode, X::Vector{UInt}, y::AbstractVector{Float64})
+    for (x, target) in Iterators.zip(X, y)
+        train!(node, x, target)
+    end
 end
 
 end

@@ -3,9 +3,9 @@
 
 Thermometer encoder, used to represent real values as binary patterns.
 """
-struct Thermometer{T <: Real} <: AbstractEncoder
-    min::Union{T,AbstractVector{T}}
-    max::Union{T,AbstractVector{T}}
+struct Thermometer{T <: Real} <: AbstractEncoder{T}
+    min::Vector{T}
+    max::Vector{T}
     resolution::Int # TODO: This could be unsigned
 
     """
@@ -26,7 +26,7 @@ struct Thermometer{T <: Real} <: AbstractEncoder
             "the thermometer's resolution must be greater then zero"
         ))
 
-        new(min, max, resolution)
+        new([min], [max], resolution)
     end
 
     """
@@ -131,4 +131,45 @@ function encode!(encoder::Thermometer{T}, x::T, pattern::AbstractVector{Bool}) w
     validate_input_output(encoder, x, pattern)
 
     encode!(encoder, encoder.min[1], encoder.max[1], x, pattern)
+end
+
+# =============================== Experimental =============================== #
+# TODO
+function encode(encoder::Thermometer{T}, min::T, max::T, x::T, index::Int) where {T <: Real}
+    return x > (min + ((index - 1) % encoder.resolution) * (max - min) / encoder.resolution)
+end
+
+function encode(encoder::Thermometer{T}, min::T, max::T, x::AbstractVector{T}, index::Int) where {T <: Real}
+    component = floor(Int, (index - 1) / encoder.resolution) + 1
+    return x[component] > (min + ((index - 1) % encoder.resolution) * (max - min) / encoder.resolution)
+end
+
+# TODO: Validation. No index may be greater then the resolution
+function encode(encoder::Thermometer{T}, min::T, max::T, x::T, tuple_indices::Vector{Int}) where {T <: Real}
+    value = zero(UInt)
+    for (i, t) in Iterators.enumerate(tuple_indices)
+        value += encode(encoder, min, max, x, t) << (i - 1)
+    end
+
+    return value
+end
+
+function encode(encoder::Thermometer{T}, x::T, tuple_indices::Vector{Int}) where {T <: Real}
+    encode(encoder, encoder.min[1], encoder.max[1], x, tuple_indices)
+end
+
+function encode(encoder::E, x::AbstractVector{T}, tuple_indices::Vector{Int}) where {E <: AbstractEncoder,T <: Real}
+    value = zero(UInt)
+    
+    if length(encoder.min) != 1
+        for (i, t) in Iterators.enumerate(tuple_indices)
+            value += encode(encoder, encoder.min[i], encoder.max[i], x, t) << (i - 1)
+        end
+    else
+        for (i, t) in Iterators.enumerate(tuple_indices)
+            value += encode(encoder, encoder.min[1], encoder.max[1], x, t) << (i - 1)
+        end
+    end
+
+    return value
 end
