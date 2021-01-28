@@ -18,7 +18,8 @@ export Discriminator,
   RegressionDiscriminator,
   FastRegressionDiscriminator,
   GeneralizedRegressionDiscriminator,
-  AltDiscriminator
+  AltDiscriminator,
+  SuperAltDiscriminator
 
 export MultiDiscriminatorClassifier
 

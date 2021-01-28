@@ -54,3 +54,25 @@ function random_tuples(len::Int, n::Int; seed=Union{Nothing,Int} = nothing)
 
     return collect(Iterators.partition(ordering, n))
 end
+
+function random_tuples_segment_offset(input_len::Int, res::Int; seed=Union{Nothing,Int} = nothing)
+    !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
+    input_len < 0 && throw(DomainError(input_len, "Input length must be non-negative"))
+
+    rng = isnothing(seed) ? MersenneTwister() : MersenneTwister(seed) 
+    
+    len = input_len * res
+    ordering = randperm(rng, len)
+    segments = Vector{Int}(undef, len)
+    offsets  = Vector{Int}(undef, len)
+
+    for i in 1:len
+        s, offset = fldmod(i - 1, res)
+        segment = s + 1
+
+        segments[i] = segment
+        offsets[i] = offset
+    end
+
+    return segments[ordering], offsets[ordering]
+end

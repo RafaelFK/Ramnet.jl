@@ -1,3 +1,8 @@
+using Base.Iterators: enumerate, zip
+
+# TODO: I could get rid of a lot of if-else checks if min, max and rel_extrema_diff
+#       always had the same shape as the input. I order to do that, however, the
+#       encoder would need to now the input shape, which would break a lot of things
 """
     Thermometer{T <: Real} <: AbstractEncoder
 
@@ -188,26 +193,47 @@ end
 
 #     return x[component] > min + ((index - 1) % encoder.resolution) * rel_extrema_diff
 # end
-function encode(encoder::Thermometer{T}, x::AbstractVector{T}, index::Int) where {T <: Real}
-    d, r = fldmod(index - 1, encoder.resolution)
-    component = d + 1
-    
+
+# TODO: This if-else will be check an absurd amount of times when called by the function bellow.
+#       Maybe make specialized versions passing in the appropriate min  and extrema_diff values
+function encode(encoder::Thermometer{T}, x::AbstractVector{T}, segment::Int, offset::Int) where {T <: Real}
     if length(encoder.min) != 1
-        min = encoder.min[component]
-        rel_extrema_diff = encoder.rel_extrema_diff[component]
+        min = encoder.min[segment]
+        rel_extrema_diff = encoder.rel_extrema_diff[segment]
     else
         min = encoder.min[1]
         rel_extrema_diff = encoder.rel_extrema_diff[1]
     end
 
-    return x[component] > min + r * rel_extrema_diff
+    return x[segment] > min + offset * rel_extrema_diff
+end
+
+function encode(encoder::Thermometer{T}, x::AbstractVector{T}, segments::AbstractVector{Int}, offsets::AbstractVector{Int}) where {T <: Real}
+    value = zero(UInt)
+
+    for (i, (segment, offset)) in enumerate(zip(segments, offsets))
+        value += encode(encoder, x, segment, offset) << (i - 1)
+    end
+
+    return value
+end
+
+# TODO: This might no longer be useful
+function encode(encoder::Thermometer{T}, x::AbstractVector{T}, index::Int) where {T <: Real}
+    d, offset = fldmod(index - 1, encoder.resolution)
+    segment = d + 1
+    
+    return encode(encoder, x, segment, offset)
 end
 
 function pattern(encoder::Thermometer{T}, x::AbstractVector{T}) where {T <: Real}
-    out = Vector{Bool}(undef, length(x) * resolution(encoder))
+    res = resolution(encoder)
+    out = Vector{Bool}(undef, length(x) * res)
 
-    for i in eachindex(out)
-        out[i] = encode(encoder, x, i)
+    for segment in eachindex(x)
+        for offset in 0:res - 1
+            out[(segment - 1) * res + offset + 1] = encode(encoder, x, segment, offset)
+        end
     end
 
     out
