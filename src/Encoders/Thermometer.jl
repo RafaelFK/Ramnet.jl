@@ -6,6 +6,7 @@ Thermometer encoder, used to represent real values as binary patterns.
 struct Thermometer{T <: Real} <: AbstractEncoder{T}
     min::Vector{T}
     max::Vector{T}
+    rel_extrema_diff::Vector{Float64} # (max - min) / resolution
     resolution::Int # TODO: This could be unsigned
 
     """
@@ -26,7 +27,7 @@ struct Thermometer{T <: Real} <: AbstractEncoder{T}
             "the thermometer's resolution must be greater then zero"
         ))
 
-        new([min], [max], resolution)
+        new([min], [max], [(max - min) / resolution], resolution)
     end
 
     """
@@ -52,7 +53,7 @@ struct Thermometer{T <: Real} <: AbstractEncoder{T}
             "the thermometer's resolution must be greater then zero"
         ))
 
-        new(min, max, resolution)
+        new(min, max, (max - min) / resolution, resolution)
     end
 end
 
@@ -158,7 +159,7 @@ function encode(encoder::Thermometer{T}, x::T, tuple_indices::Vector{Int}) where
     encode(encoder, encoder.min[1], encoder.max[1], x, tuple_indices)
 end
 
-function encode(encoder::E, x::AbstractVector{T}, tuple_indices::Vector{Int}) where {E <: AbstractEncoder,T <: Real}
+function encode(encoder::Thermometer{T}, x::AbstractVector{T}, tuple_indices::Vector{Int}) where {T <: Real}
     value = zero(UInt)
     
     if length(encoder.min) != 1
@@ -173,3 +174,43 @@ function encode(encoder::E, x::AbstractVector{T}, tuple_indices::Vector{Int}) wh
 
     return value
 end
+
+# ------------------------------------------------------------------------------
+# function encode(encoder::Thermometer{T}, x::AbstractVector{T}, index::Int) where {T <: Real}
+#     component = floor(Int, (index - 1) / encoder.resolution) + 1
+#     if length(encoder.min) != 1
+#         min = encoder.min[component]
+#         rel_extrema_diff = encoder.rel_extrema_diff[component]
+#     else
+#         min = encoder.min[1]
+#         rel_extrema_diff = encoder.rel_extrema_diff[1]
+#     end
+
+#     return x[component] > min + ((index - 1) % encoder.resolution) * rel_extrema_diff
+# end
+function encode(encoder::Thermometer{T}, x::AbstractVector{T}, index::Int) where {T <: Real}
+    d, r = fldmod(index - 1, encoder.resolution)
+    component = d + 1
+    
+    if length(encoder.min) != 1
+        min = encoder.min[component]
+        rel_extrema_diff = encoder.rel_extrema_diff[component]
+    else
+        min = encoder.min[1]
+        rel_extrema_diff = encoder.rel_extrema_diff[1]
+    end
+
+    return x[component] > min + r * rel_extrema_diff
+end
+
+function pattern(encoder::Thermometer{T}, x::AbstractVector{T}) where {T <: Real}
+    out = Vector{Bool}(undef, length(x) * resolution(encoder))
+
+    for i in eachindex(out)
+        out[i] = encode(encoder, x, i)
+    end
+
+    out
+end
+
+export pattern
