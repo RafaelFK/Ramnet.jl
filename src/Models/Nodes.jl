@@ -10,7 +10,8 @@ export AbstractNode,
     RegressionNode,
     FastRegressionNode,
     GeneralizedRegressionNode,
-    AltRegressionNode
+    AltRegressionNode,
+    stepsize
 
 # TODO: There is nothing preventing different sized inputs
 abstract type AbstractNode <: AbstractModel end
@@ -157,30 +158,48 @@ function train!(node::FastRegressionNode, X::T, y::Float64) where {T <: Abstract
 end
 
 # =============================== Experimental =============================== #
-struct AltRegressionNode <: AbstractRegressionNode
-    γ::Float64
+struct AltRegressionNode{S} <: AbstractRegressionNode
+    α::Float64
     default::Tuple{Int,Float64}
     memory::Dict{UInt,Tuple{Int,Float64}}
-
-    function AltRegressionNode(γ, default, memory)
-        if !(0.0 ≤ γ ≤ 1.0)
-            throw(DomainError(γ, "`γ` must lie in the [0, 1] interval"))
+    
+    function AltRegressionNode{S}(α, default, memory) where {S}
+        if !(0.0 ≤ α ≤ 1.0)
+            throw(DomainError(α, "`α` must lie in the [0, 1] interval"))
         end
-
-        new(γ, default, memory)
+        
+        new(α, default, memory)
     end
 end
 
-AltRegressionNode(;γ=1.0, default=(zero(Int), zero(Float64))) = AltRegressionNode(γ, default, Dict{UInt64,Tuple{Int,Float64}}())
+# TODO: Rename :original regression style to :average
+AltRegressionNode(;style=:original, α=1.0, default=(zero(Int), zero(Float64))) = AltRegressionNode{style}(α, default, Dict{UInt64,Tuple{Int,Float64}}())
+
+stepsize(node::AltRegressionNode{S}, count::Int) where {S} = stepsize(Val(S), node.α, count)
+
+# Count cannot be zero
+stepsize(::Val{:original}, ::Float64, count::Int) = count == 0 ? one(Float64) : one(Float64) / count
+stepsize(::Val{:constant}, α::Float64, ::Int) = α
+# There are two edge cases that I have to consider here: α = 1 and count = 0
+# The equation bellow probably is not valid for these cases
+function stepsize(::Val{:discounted}, α::Float64, count::Int)
+    if α == 1.0
+        return stepsize(Val(:original), α, count)
+    elseif count == 0
+        return 1.0
+    else
+        return (1 - α) / (1 - α^count)
+    end
+end
 
 function predict(node::AltRegressionNode, X::UInt)
     return get(node.memory, X, node.default)
 end
 
 function train!(node::AltRegressionNode, X::UInt, y::Float64)
-    count, sum = get(node.memory, X, node.default)
+    count, estimate = get(node.memory, X, node.default)
     
-    node.memory[X] = (count + 1, node.γ * sum + y)
+    node.memory[X] = (count + 1, estimate + stepsize(node, count) * (y - estimate))
 
     nothing
 end

@@ -1,5 +1,6 @@
 using .Nodes
 using ..Partitioners
+using ..Encoders
 
 using Base.Iterators: zip
 
@@ -152,103 +153,35 @@ function predict(d::Discriminator{P,FastRegressionNode}, X::AbstractVector{Bool}
 end
 
 # =============================== Experimental =============================== #
-using ..Encoders
-
-# TODO: If the partitioning is going to be done upfront and from that moment
-#       onwards each node knows how to form its tuples, maybe it's not necessary
-#       for the partitioner to be a member of the Discriminator struct
-struct AltDiscriminator{T <: Real,E <: AbstractEncoder{T}}
-    input_len::Int
-    encoder::E
-    tuples::Vector{Vector{Int}}
-    nodes::Vector{AltRegressionNode}
-end
-
-function AltDiscriminator(input_len::Int, n::Int, encoder::E; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
-    max_tuple_size = (UInt == UInt32) ? 32 : 64
-
-    (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
-
-    tuples = random_tuples(input_len * resolution(encoder), n; seed)
-    nodes = [AltRegressionNode(;kargs...) for _ in 1:length(tuples)]
-
-    AltDiscriminator{T,E}(input_len, encoder, tuples, nodes)
-end
-
-function train!(d::AltDiscriminator{T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {T <: Real}
-    length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
-    
-    for (t, node) in Iterators.zip(d.tuples, d.nodes)
-        train!(node, encode(d.encoder, x, t), y)
-    end
-
-    return nothing
-end
-
-function train!(d::AltDiscriminator{T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, y::AbstractVector{Float64}) where {T <: Real}
-    size(X, 1) != d.input_len && throw(DimensionMismatch("expected number of rows of X to be to be $(d.input_len). Got $(size(X, 1))"))
-    size(X, 2) != length(y) && throw(DimensionMismatch("The number of columns of X must match the length of y"))
-    
-    for i in eachindex(y)
-        train!(d, X[:, i], y[i])
-    end
-
-    nothing
-end
-
-function predict(d::AltDiscriminator{T,<:AbstractEncoder{T}}, x::AbstractVector{T}) where {T <: Real}
-    partial_count = zero(Int)
-    estimate = zero(Float64)
-
-    for (t, node) in Iterators.zip(d.tuples, d.nodes)
-        key = encode(d.encoder, x, t)
-        count, sum = predict(node, key)
-
-        if node.γ != 1.0
-            count = (1 - node.γ^count) / (1 - node.γ)
-        end
-
-        partial_count += count
-        estimate += sum
-    end
-
-    return partial_count == 0 ? estimate : estimate / partial_count
-end
-
-function predict(d::AltDiscriminator{T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {T <: Real}
-    [predict(d, x) for x in eachcol(X)]
-end
-
 # ------------------------------------------------------------------------------
 
-struct SuperAltDiscriminator{T <: Real,E <: AbstractEncoder{T}}
+struct SuperAltDiscriminator{S,T <: Real,E <: AbstractEncoder{T}}
     input_len::Int
     n::Int
     encoder::E
     # tuples::Vector{Vector{Tuple{Int,Int}}}
     segments::Vector{Int}
     offsets::Vector{Int}
-    nodes::Vector{AltRegressionNode}
+    nodes::Vector{AltRegressionNode{S}}
 end
 
-# TODO: Leia isso aqui!
-#       Lidar com vetores de vetores de tuplas é desnecessariamente complicado. Simplesmente
-#       mantenha segmentos e offsets em vetores separados. Também considere usar vetores "planos"
-#       ao invés de vetores de vetores. Posso gerar os grupinhos de n elementos usando
-#       Iterators.partition
-function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E; style::Symbol=:original, seed::Union{Nothing,Int}=nothing, kargs...) where {S,T <: Real,E <: AbstractEncoder{T}}
     max_tuple_size = (UInt == UInt32) ? 32 : 64
     (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
 
     res = resolution(encoder)
     segments, offsets = random_tuples_segment_offset(input_len, res; seed)
 
-    nodes = [AltRegressionNode(;kargs...) for _ in 1:cld(input_len * res, n)]
+    nodes = [AltRegressionNode(;style, kargs...) for _ in 1:cld(input_len * res, n)]
 
-    SuperAltDiscriminator{T,E}(input_len, n, encoder, segments, offsets, nodes)
+    SuperAltDiscriminator{style,T,E}(input_len, n, encoder, segments, offsets, nodes)
 end
 
-function train!(d::SuperAltDiscriminator{T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {T <: Real}
+# function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E; style::Symbol=:original, seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+
+# end
+
+function train!(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {S,T <: Real}
     length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
     
     for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
@@ -258,7 +191,7 @@ function train!(d::SuperAltDiscriminator{T,<:AbstractEncoder{T}}, x::AbstractVec
     return nothing
 end
 
-function train!(d::SuperAltDiscriminator{T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, y::AbstractVector{Float64}) where {T <: Real}
+function train!(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, y::AbstractVector{Float64}) where {S,T <: Real}
     size(X, 1) != d.input_len && throw(DimensionMismatch("expected number of rows of X to be to be $(d.input_len). Got $(size(X, 1))"))
     size(X, 2) != length(y) && throw(DimensionMismatch("The number of columns of X must match the length of y"))
     
@@ -269,25 +202,24 @@ function train!(d::SuperAltDiscriminator{T,<:AbstractEncoder{T}}, X::AbstractMat
     nothing
 end
 
-function predict(d::SuperAltDiscriminator{T,<:AbstractEncoder{T}}, x::AbstractVector{T}) where {T <: Real}
-    partial_count = zero(Int)
-    estimate = zero(Float64)
+function predict(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractVector{T}) where {S,T <: Real}
+    running_numerator = zero(Float64)
+    running_denominator = zero(Float64)
 
     for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
         key = encode(d.encoder, x, segments, offsets)
-        count, sum = predict(node, key)
+        count, estimate = predict(node, key)
 
-        if node.γ != 1.0
-            count = (1 - node.γ^count) / (1 - node.γ)
+        if count != 0
+            step = stepsize(node, count)
+            running_numerator += estimate / step
+            running_denominator += 1 / step
         end
-
-        partial_count += count
-        estimate += sum
     end
 
-    return partial_count == 0 ? estimate : estimate / partial_count
+    return running_denominator == 0 ? zero(Float64) : running_numerator / running_denominator
 end
 
-function predict(d::SuperAltDiscriminator{T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {T <: Real}
+function predict(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {S,T <: Real}
     [predict(d, x) for x in eachcol(X)]
 end

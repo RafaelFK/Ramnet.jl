@@ -140,59 +140,6 @@ function encode!(encoder::Thermometer{T}, x::T, pattern::AbstractVector{Bool}) w
 end
 
 # =============================== Experimental =============================== #
-# TODO
-function encode(encoder::Thermometer{T}, min::T, max::T, x::T, index::Int) where {T <: Real}
-    return x > (min + ((index - 1) % encoder.resolution) * (max - min) / encoder.resolution)
-end
-
-function encode(encoder::Thermometer{T}, min::T, max::T, x::AbstractVector{T}, index::Int) where {T <: Real}
-    component = floor(Int, (index - 1) / encoder.resolution) + 1
-    return x[component] > (min + ((index - 1) % encoder.resolution) * (max - min) / encoder.resolution)
-end
-
-# TODO: Validation. No index may be greater then the resolution
-function encode(encoder::Thermometer{T}, min::T, max::T, x::T, tuple_indices::Vector{Int}) where {T <: Real}
-    value = zero(UInt)
-    for (i, t) in Iterators.enumerate(tuple_indices)
-        value += encode(encoder, min, max, x, t) << (i - 1)
-    end
-
-    return value
-end
-
-function encode(encoder::Thermometer{T}, x::T, tuple_indices::Vector{Int}) where {T <: Real}
-    encode(encoder, encoder.min[1], encoder.max[1], x, tuple_indices)
-end
-
-function encode(encoder::Thermometer{T}, x::AbstractVector{T}, tuple_indices::Vector{Int}) where {T <: Real}
-    value = zero(UInt)
-    
-    if length(encoder.min) != 1
-        for (i, t) in Iterators.enumerate(tuple_indices)
-            value += encode(encoder, encoder.min[i], encoder.max[i], x, t) << (i - 1)
-        end
-    else
-        for (i, t) in Iterators.enumerate(tuple_indices)
-            value += encode(encoder, encoder.min[1], encoder.max[1], x, t) << (i - 1)
-        end
-    end
-
-    return value
-end
-
-# ------------------------------------------------------------------------------
-# function encode(encoder::Thermometer{T}, x::AbstractVector{T}, index::Int) where {T <: Real}
-#     component = floor(Int, (index - 1) / encoder.resolution) + 1
-#     if length(encoder.min) != 1
-#         min = encoder.min[component]
-#         rel_extrema_diff = encoder.rel_extrema_diff[component]
-#     else
-#         min = encoder.min[1]
-#         rel_extrema_diff = encoder.rel_extrema_diff[1]
-#     end
-
-#     return x[component] > min + ((index - 1) % encoder.resolution) * rel_extrema_diff
-# end
 
 # TODO: This if-else will be check an absurd amount of times when called by the function bellow.
 #       Maybe make specialized versions passing in the appropriate min  and extrema_diff values
@@ -225,18 +172,3 @@ function encode(encoder::Thermometer{T}, x::AbstractVector{T}, index::Int) where
     
     return encode(encoder, x, segment, offset)
 end
-
-function pattern(encoder::Thermometer{T}, x::AbstractVector{T}) where {T <: Real}
-    res = resolution(encoder)
-    out = Vector{Bool}(undef, length(x) * res)
-
-    for segment in eachindex(x)
-        for offset in 0:res - 1
-            out[(segment - 1) * res + offset + 1] = encode(encoder, x, segment, offset)
-        end
-    end
-
-    out
-end
-
-export pattern

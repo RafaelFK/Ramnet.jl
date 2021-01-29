@@ -57,7 +57,7 @@ end
 
 function random_tuples_segment_offset(input_len::Int, res::Int; seed=Union{Nothing,Int} = nothing)
     !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
-    input_len < 0 && throw(DomainError(input_len, "Input length must be non-negative"))
+    input_len ≤ 0 && throw(DomainError(input_len, "Input length must be greater then zero"))
 
     rng = isnothing(seed) ? MersenneTwister() : MersenneTwister(seed) 
     

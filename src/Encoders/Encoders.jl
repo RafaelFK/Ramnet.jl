@@ -1,12 +1,13 @@
 module Encoders
 
-export AbstractEncoder, encode, resolution
+export AbstractEncoder, encode, resolution, pattern
 
 abstract type AbstractEncoder{T <: Real} end
 
 function encode! end
 function encode end
 resolution(enc::AbstractEncoder) = enc.resolution
+function pattern end
 
 ########################### Generic encoding methods ###########################
 """
