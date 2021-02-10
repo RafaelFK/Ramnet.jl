@@ -38,8 +38,15 @@ end
 Base.eltype(::Type{PartitionerIterator{P,T}}) where {P <: AbstractPartitioner,T <: AbstractVecOrMat} = T
 
 include("RandomPartitioner.jl")
-export RandomPartitioner, random_partitioning, random_tuples, random_tuples_segment_offset
+export RandomPartitioner,
+    random_partitioning,
+    random_tuples,
+    random_tuples_segment_offset,
+    uniform_random_tuples,
+    significance_aware_random_tuples,
+    indices_to_segment_offset
 
 include("LinearPartitioner.jl")
 export LinearPartitioner
+
 end

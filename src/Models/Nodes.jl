@@ -11,7 +11,8 @@ export AbstractNode,
     FastRegressionNode,
     GeneralizedRegressionNode,
     AltRegressionNode,
-    stepsize
+    stepsize,
+    DifferentialNode
 
 # TODO: There is nothing preventing different sized inputs
 abstract type AbstractNode <: AbstractModel end
@@ -212,6 +213,46 @@ end
 
 
 function train!(node::AltRegressionNode, X::Vector{UInt}, y::AbstractVector{Float64})
+    for (x, target) in Iterators.zip(X, y)
+        train!(node, x, target)
+    end
+end
+
+# ============================ Super Experimental ============================ #
+struct DifferentialNode <: AbstractRegressionNode
+    α::Float64
+    default::Float64
+    memory::Dict{UInt,Float64}
+    
+    function DifferentialNode(α, default, memory)
+        if !(0.0 ≤ α ≤ 1.0)
+            throw(DomainError(α, "`α` must lie in the [0, 1] interval"))
+        end
+        
+        new(α, default, memory)
+    end
+end
+
+DifferentialNode(;α=1.0, default=zero(Float64)) = DifferentialNode(α, default, Dict{UInt64,Float64}())
+
+function predict(node::DifferentialNode, X::UInt)
+    return get(node.memory, X, node.default)
+end
+
+function train!(node::DifferentialNode, X::UInt, y::Float64, ŷ::Float64)
+    weight = get(node.memory, X, node.default)
+    
+    node.memory[X] = weight + node.α * (y - ŷ)
+
+    nothing
+end
+
+function predict(node::DifferentialNode, X::Vector{UInt}; kargs...)
+    return [predict(node, x; kargs...) for x in X]
+end
+
+# This one is not quite correct
+function train!(node::DifferentialNode, X::Vector{UInt}, y::AbstractVector{Float64})
     for (x, target) in Iterators.zip(X, y)
         train!(node, x, target)
     end

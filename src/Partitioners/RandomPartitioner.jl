@@ -1,4 +1,5 @@
 using Random
+using Base.Iterators: enumerate
 
 struct RandomPartitioner <: AbstractPartitioner
     width::Int
@@ -55,7 +56,24 @@ function random_tuples(len::Int, n::Int; seed=Union{Nothing,Int} = nothing)
     return collect(Iterators.partition(ordering, n))
 end
 
-function random_tuples_segment_offset(input_len::Int, res::Int; seed=Union{Nothing,Int} = nothing)
+# TODO: indices length must match input_len times res
+function indices_to_segment_offset(indices::AbstractVector{Int}, input_len::Int, res::Int)
+    len = input_len * res
+    
+    segments = Vector{Int}(undef, len)
+    offsets  = Vector{Int}(undef, len)
+
+    for (e, i) in enumerate(indices)
+        s, offset = fldmod(i - 1, res)
+
+        segments[e] = s + 1
+        offsets[e] = offset
+    end
+
+    return segments, offsets
+end
+
+function random_tuples_segment_offset(input_len::Int, res::Int; seed::Union{Nothing,Int}=nothing)
     !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
     input_len ≤ 0 && throw(DomainError(input_len, "Input length must be greater then zero"))
 
@@ -75,4 +93,45 @@ function random_tuples_segment_offset(input_len::Int, res::Int; seed=Union{Nothi
     end
 
     return segments[ordering], offsets[ordering]
+end
+
+function uniform_random_tuples(input_len::Int, res::Int, ::Int; seed::Union{Nothing,Int}=nothing)
+    !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
+    input_len ≤ 0 && throw(DomainError(input_len, "Input length must be greater then zero"))
+
+    rng = isnothing(seed) ? MersenneTwister() : MersenneTwister(seed) 
+    
+    len = input_len * res
+    
+    return randperm(rng, len)
+end
+
+function significance_aware_random_tuples(input_len::Int, res::Int, n::Int; seed::Union{Nothing,Int}=nothing)
+    !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
+    input_len ≤ 0 && throw(DomainError(input_len, "Input length must be greater then zero"))
+
+    rng = isnothing(seed) ? MersenneTwister() : MersenneTwister(seed) 
+    
+    data = first.(sort(
+            shuffle(
+                rng,
+                collect(enumerate(repeat(1:res, input_len)))
+            );
+            by=last
+        ))
+
+    len = input_len * res
+
+    indices = Vector{Int}(undef, len)
+    out = 1
+    for i in 1:len
+        indices[out] = data[i]
+
+        out += res
+        if out > len
+            out = (out % len) + 1
+        end
+    end
+
+    return indices
 end

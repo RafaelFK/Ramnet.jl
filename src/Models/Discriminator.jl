@@ -47,9 +47,9 @@ const BitDiscriminator        = Discriminator{RandomPartitioner,DictNode{BitVect
 const BleachingDiscriminator  = Discriminator{RandomPartitioner,AccNode} # This should be the default classification discriminator
 
 # RegressionDiscriminator = Discriminator{RandomPartitioner,RegressionNode}
-const RegressionDiscriminator = Discriminator{RandomPartitioner,FastRegressionNode}
+# const RegressionDiscriminator = Discriminator{RandomPartitioner,FastRegressionNode}
 const FastRegressionDiscriminator = Discriminator{RandomPartitioner,FastRegressionNode}
-GeneralizedRegressionDiscriminator = Discriminator{RandomPartitioner,GeneralizedRegressionNode}
+# GeneralizedRegressionDiscriminator = Discriminator{RandomPartitioner,GeneralizedRegressionNode}
 
 # Generic functions
 function train!(d::Discriminator{<:AbstractPartitioner,<:AbstractClassificationNode}, X::T) where {T <: AbstractVecOrMat{Bool}}
@@ -153,33 +153,57 @@ function predict(d::Discriminator{P,FastRegressionNode}, X::AbstractVector{Bool}
 end
 
 # =============================== Experimental =============================== #
-# ------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------- #
 
 struct SuperAltDiscriminator{S,T <: Real,E <: AbstractEncoder{T}}
     input_len::Int
     n::Int
+    default::Tuple{Int,Float64}
     encoder::E
-    # tuples::Vector{Vector{Tuple{Int,Int}}}
     segments::Vector{Int}
     offsets::Vector{Int}
     nodes::Vector{AltRegressionNode{S}}
 end
 
-function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E; style::Symbol=:original, seed::Union{Nothing,Int}=nothing, kargs...) where {S,T <: Real,E <: AbstractEncoder{T}}
+# function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E; style::Symbol=:original, seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+#     max_tuple_size = (UInt == UInt32) ? 32 : 64
+#     (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
+
+#     res = resolution(encoder)
+#     segments, offsets = random_tuples_segment_offset(input_len, res; seed)
+
+#     nodes = [AltRegressionNode(;style, kargs...) for _ in 1:cld(input_len * res, n)]
+
+#     SuperAltDiscriminator{style,T,E}(input_len, n, encoder, segments, offsets, nodes)
+# end
+
+function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E, partitioner::Function; style::Symbol=:original, seed::Union{Nothing,Int}=nothing, default::Tuple{Int,Float64}=(zero(Int), zero(Float64)), kargs...) where {T <: Real,E <: AbstractEncoder{T}}
     max_tuple_size = (UInt == UInt32) ? 32 : 64
     (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
 
     res = resolution(encoder)
-    segments, offsets = random_tuples_segment_offset(input_len, res; seed)
 
-    nodes = [AltRegressionNode(;style, kargs...) for _ in 1:cld(input_len * res, n)]
+    indices = partitioner(input_len, res, n; seed)
+    segments, offsets = indices_to_segment_offset(indices, input_len, res)
 
-    SuperAltDiscriminator{style,T,E}(input_len, n, encoder, segments, offsets, nodes)
+    nodes = [AltRegressionNode(;style, default, kargs...) for _ in 1:cld(input_len * res, n)]
+
+    SuperAltDiscriminator{style,T,E}(input_len, n, default, encoder, segments, offsets, nodes)
 end
 
-# function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E; style::Symbol=:original, seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E; partitioner::Symbol=:uniform, style::Symbol=:original, seed::Union{Nothing,Int}=nothing, default::Tuple{Int,Float64}=(zero(Int), zero(Float64)), kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+    if partitioner == :uniform
+        p_func = uniform_random_tuples
+    elseif partitioner == :significance
+        p_func = significance_aware_random_tuples
+    else
+        throw(DomainError(partitioner, "Unknown partitioning"))
+    end
 
-# end
+    SuperAltDiscriminator(input_len, n, encoder, p_func; style, seed, default, kargs...)
+end
+
+const RegressionDiscriminator = SuperAltDiscriminator
 
 function train!(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {S,T <: Real}
     length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
@@ -217,9 +241,111 @@ function predict(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::Abstract
         end
     end
 
-    return running_denominator == 0 ? zero(Float64) : running_numerator / running_denominator
+    # return running_denominator == 0 ? zero(Float64) : running_numerator / running_denominator
+    return running_denominator == 0 ? last(d.default) : running_numerator / running_denominator
 end
 
 function predict(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {S,T <: Real}
     [predict(d, x) for x in eachcol(X)]
+end
+
+# ============================ Super Experimental ============================ #
+
+struct DifferentialDiscriminator{T <: Real,E <: AbstractEncoder{T}}
+    input_len::Int
+    n::Int
+    encoder::E
+    segments::Vector{Int}
+    offsets::Vector{Int}
+    nodes::Vector{DifferentialNode}
+end
+
+# function DifferentialDiscriminator(input_len::Int, n::Int, encoder::E; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+#     max_tuple_size = (UInt == UInt32) ? 32 : 64
+#     (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
+
+#     res = resolution(encoder)
+#     segments, offsets = random_tuples_segment_offset(input_len, res; seed)
+
+#     nodes = [DifferentialNode(; kargs...) for _ in 1:cld(input_len * res, n)]
+
+#     DifferentialDiscriminator{T,E}(input_len, n, encoder, segments, offsets, nodes)
+# end
+
+function DifferentialDiscriminator(input_len::Int, n::Int, encoder::E, partitioner::Function; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+    max_tuple_size = (UInt == UInt32) ? 32 : 64
+    (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
+
+    res = resolution(encoder)
+
+    indices = partitioner(input_len, res, n; seed)
+    segments, offsets = indices_to_segment_offset(indices, input_len, res)
+
+    nodes = [DifferentialNode(; kargs...) for _ in 1:cld(input_len * res, n)]
+
+    DifferentialDiscriminator{T,E}(input_len, n, encoder, segments, offsets, nodes)
+end
+
+function DifferentialDiscriminator(input_len::Int, n::Int, encoder::E; partitioner::Symbol=:uniform, seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+    if partitioner == :uniform
+        p_func = uniform_random_tuples
+    elseif partitioner == :significance
+        p_func = significance_aware_random_tuples
+    else
+        throw(DomainError(partitioner, "Unknown partitioning"))
+    end
+
+    DifferentialDiscriminator(input_len, n, encoder, p_func; seed)
+end
+
+# const RegressionDiscriminator = DifferentialDiscriminator
+function predict(d::DifferentialDiscriminator{T,<:AbstractEncoder{T}}, x::AbstractVector{T}) where {T <: Real}
+    estimate = zero(Float64)
+
+    for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+        key = encode(d.encoder, x, segments, offsets)
+        weight = predict(node, key)
+
+        estimate += weight
+    end
+
+    # return running_denominator == 0 ? zero(Float64) : running_numerator / running_denominator
+    return estimate
+end
+
+function predict(d::DifferentialDiscriminator{T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {T <: Real}
+    [predict(d, x) for x in eachcol(X)]
+end
+
+function train!(d::DifferentialDiscriminator{T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {T <: Real}
+    length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
+    
+    ŷ = predict(d, x)
+
+    for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+        train!(node, encode(d.encoder, x, segments, offsets), y, ŷ)
+    end
+
+    return nothing
+end
+
+using Random
+
+function train!(d::DifferentialDiscriminator{T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, y::AbstractVector{Float64}; epochs=1) where {T <: Real}
+    size(X, 1) != d.input_len && throw(DimensionMismatch("expected number of rows of X to be to be $(d.input_len). Got $(size(X, 1))"))
+    size(X, 2) != length(y) && throw(DimensionMismatch("The number of columns of X must match the length of y"))
+    
+    # TODO: Iterate more then once through the data?
+    # TODO: Does it make a difference if a use the data in order or randomly?
+    # TODO: Should a encode and hash the points beforehand, since I'll be using each
+    #       multiple times?
+    indices = collect(1:length(y)) # similar(y, Int)
+    for _ in 1:epochs
+        for i in shuffle!(indices) # eachindex(y)
+            train!(d, view(X, :, i), y[i])
+            # train!(d, X[:, i], y[i])
+        end
+    end
+
+    nothing
 end

@@ -366,4 +366,10 @@ export Thermometer
 include("CircularThermometer.jl")
 export CircularThermometer
 
+include("IdentityEncoder.jl")
+export IdentityEncoder
+
+include("RawBitsEncoder.jl")
+export RawBitsEncoder
+
 end

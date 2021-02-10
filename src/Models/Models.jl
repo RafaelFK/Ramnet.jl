@@ -29,7 +29,8 @@ export Discriminator,
   FastRegressionDiscriminator,
   GeneralizedRegressionDiscriminator,
   AltDiscriminator,
-  SuperAltDiscriminator
+  SuperAltDiscriminator,
+  DifferentialDiscriminator
 
 include("MultiDiscriminatorClassifier.jl")
 export MultiDiscriminatorClassifier
