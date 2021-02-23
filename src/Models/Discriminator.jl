@@ -2,7 +2,7 @@ using .Nodes
 using ..Partitioners
 using ..Encoders
 
-using Base.Iterators: zip
+using Base.Iterators:zip
 
 # TODO: Allow the instantiation without the specification of width (Could be
 #       determined from the training data) 
@@ -143,7 +143,7 @@ function predict(d::Discriminator{P,FastRegressionNode}, X::AbstractVector{Bool}
 
         if node.γ != 1.0
             count = (1 - node.γ^count) / (1 - node.γ)
-        end
+    end
 
         partial_count += count
         estimate += sum
@@ -159,7 +159,8 @@ struct SuperAltDiscriminator{S,T <: Real,E <: AbstractEncoder{T}}
     input_len::Int
     n::Int
     default::Tuple{Int,Float64}
-    encoder::E
+    scaling::Float64
+encoder::E
     segments::Vector{Int}
     offsets::Vector{Int}
     nodes::Vector{AltRegressionNode{S}}
@@ -188,7 +189,7 @@ function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E, partitioner::
 
     nodes = [AltRegressionNode(;style, default, kargs...) for _ in 1:cld(input_len * res, n)]
 
-    SuperAltDiscriminator{style,T,E}(input_len, n, default, encoder, segments, offsets, nodes)
+    SuperAltDiscriminator{style,T,E}(input_len, n, default, 1.0, encoder, segments, offsets, nodes)
 end
 
 function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E; partitioner::Symbol=:uniform, style::Symbol=:original, seed::Union{Nothing,Int}=nothing, default::Tuple{Int,Float64}=(zero(Int), zero(Float64)), kargs...) where {T <: Real,E <: AbstractEncoder{T}}
@@ -215,6 +216,49 @@ function train!(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractV
     return nothing
 end
 
+function tuple_distance(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, z::AbstractVector{T}) where {S,T <: Real}
+    dist = zero(Int)
+    for (segments, offsets) in zip(Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+        dist += Int(encode(d.encoder, x, segments, offsets) != encode(d.encoder, z, segments, offsets))
+    end
+
+    return dist
+end
+
+function kernel(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, z::AbstractVector{T}) where {S,T <: Real}
+    return 1 - tuple_distance(d, x, z) / length(d.nodes)
+end
+
+function counter_sum(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractVector{T}) where {S,T <: Real}
+    s = zero(Int)
+
+    for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+        s += first(get(node.memory, encode(d.encoder, x, segments, offsets), node.default))
+    end
+
+    return s
+end
+
+function kernel_weight(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {S,T <: Real}
+    s = counter_sum(d, x)
+
+    return s == 0 ? zero(Float64) : length(d.nodes) * y / s
+end
+
+function mix_kernels(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, xs::AbstractMatrix{T}, ys::AbstractVector{Float64}) where {S,T <: Real}
+    (x::AbstractVector{T}) -> sum([kernel_weight(d, x, y) * kernel(d, col, x) for (col, y) in Iterators.zip(eachcol(xs), ys)])
+end
+
+export kernel, kernel_weight, mix_kernels
+
+function train_mse!(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {S,T <: Real}
+    for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+        train!(node, encode(d.encoder, x, segments, offsets), y)
+    end
+
+    return nothing
+end
+
 function train!(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, y::AbstractVector{Float64}) where {S,T <: Real}
     size(X, 1) != d.input_len && throw(DimensionMismatch("expected number of rows of X to be to be $(d.input_len). Got $(size(X, 1))"))
     size(X, 2) != length(y) && throw(DimensionMismatch("The number of columns of X must match the length of y"))
@@ -232,7 +276,7 @@ function predict(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::Abstract
 
     for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
         key = encode(d.encoder, x, segments, offsets)
-        count, estimate = predict(node, key)
+            count, estimate = predict(node, key)
 
         if count != 0
             step = stepsize(node, count)
@@ -248,7 +292,7 @@ end
 function predict(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {S,T <: Real}
     [predict(d, x) for x in eachcol(X)]
 end
-
+    
 # ============================ Super Experimental ============================ #
 
 struct DifferentialDiscriminator{T <: Real,E <: AbstractEncoder{T}}
@@ -271,7 +315,7 @@ end
 
 #     DifferentialDiscriminator{T,E}(input_len, n, encoder, segments, offsets, nodes)
 # end
-
+    
 function DifferentialDiscriminator(input_len::Int, n::Int, encoder::E, partitioner::Function; seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
     max_tuple_size = (UInt == UInt32) ? 32 : 64
     (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
@@ -284,7 +328,7 @@ function DifferentialDiscriminator(input_len::Int, n::Int, encoder::E, partition
     nodes = [DifferentialNode(; kargs...) for _ in 1:cld(input_len * res, n)]
 
     DifferentialDiscriminator{T,E}(input_len, n, encoder, segments, offsets, nodes)
-end
+    end
 
 function DifferentialDiscriminator(input_len::Int, n::Int, encoder::E; partitioner::Symbol=:uniform, seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
     if partitioner == :uniform
@@ -348,4 +392,113 @@ function train!(d::DifferentialDiscriminator{T,<:AbstractEncoder{T}}, X::Abstrac
     end
 
     nothing
+end
+
+# ================================ Functional ================================ #
+# ---------------------------------------------------------------------------- #
+
+struct FunctionalDiscriminator{L,T <: Real,E <: AbstractEncoder{T}}
+    input_len::Int
+    n::Int
+    η::Float64
+    # default::Tuple{Int,Float64}
+    # scaling::Float64
+    encoder::E
+    segments::Vector{Int}
+    offsets::Vector{Int}
+    nodes::Vector{FunctionalNode}
+end
+    
+function FunctionalDiscriminator(input_len::Int, n::Int, η::Float64, encoder::E, partitioner::Function; loss::Symbol=:mse_loss, seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+    max_tuple_size = (UInt == UInt32) ? 32 : 64
+    (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
+
+    res = resolution(encoder)
+
+    indices = partitioner(input_len, res, n; seed)
+    segments, offsets = indices_to_segment_offset(indices, input_len, res)
+
+    nodes = [FunctionalNode(; kargs...) for _ in 1:cld(input_len * res, n)]
+
+    FunctionalDiscriminator{loss,T,E}(input_len, n, η, encoder, segments, offsets, nodes)
+end
+    
+function FunctionalDiscriminator(input_len::Int, n::Int, encoder::E; η::Float64=0.1, loss::Symbol=:mse_loss, partitioner::Symbol=:uniform, seed::Union{Nothing,Int}=nothing, kargs...) where {T <: Real,E <: AbstractEncoder{T}}
+    if partitioner == :uniform
+    p_func = uniform_random_tuples
+    elseif partitioner == :significance
+        p_func = significance_aware_random_tuples
+    else
+        throw(DomainError(partitioner, "Unknown partitioning"))
+    end
+
+    FunctionalDiscriminator(input_len, n, η, encoder, p_func; loss, seed, kargs...)
+end
+
+# The functional gradient method amounts to the addition of a new weighted kernel to the model
+# and possibly the adjustment of the weights of all previous kernels. The center
+# of the new kernel is determined by the training sample. The weight is
+# determined by the error term of the loss function and the training step size.
+# The adjustment of the previous kernel weights is determined by the
+# regularization term of the loss function
+
+function kernel_weight(d::FunctionalDiscriminator{:mse_loss,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {T <: Real}
+    d.η * (y - predict(d, x))
+end
+
+function add_kernel!(d::FunctionalDiscriminator{L,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, weight::Float64) where {L,T <: Real}
+    length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
+    
+    for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+        train!(node, encode(d.encoder, x, segments, offsets), weight)
+    end
+
+    return nothing
+end
+
+# Functional gradient descent over quadratic error
+function train!(d::FunctionalDiscriminator{L,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {L,T <: Real}
+    add_kernel!(d, x, kernel_weight(d, x, y))
+
+    return nothing
+end
+
+function train!(d::FunctionalDiscriminator{L,T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, y::AbstractVector{Float64}; epochs=1) where {L,T <: Real}
+    size(X, 1) != d.input_len && throw(DimensionMismatch("expected number of rows of X to be to be $(d.input_len). Got $(size(X, 1))"))
+    size(X, 2) != length(y) && throw(DimensionMismatch("The number of columns of X must match the length of y"))
+
+    indices = collect(1:length(y))
+    for _ in 1:epochs
+        for i in shuffle!(indices)
+            train!(d, view(X, :, i), y[i])
+        end
+    end
+
+    nothing
+end
+
+function predict(d::FunctionalDiscriminator{L,T,<:AbstractEncoder{T}}, x::AbstractVector{T}) where {L,T <: Real}
+    cum_weight = zero(Float64)
+
+    for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+        key = encode(d.encoder, x, segments, offsets)
+        weight = predict(node, key)
+
+        cum_weight += weight
+    end
+
+    return cum_weight / length(d.nodes)
+end
+
+function predict(d::FunctionalDiscriminator{L,T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {L,T <: Real}
+    [predict(d, x) for x in eachcol(X)]
+end
+
+# Reset all nodes of the network (but keep the partitioning)
+function reset!(d::FunctionalDiscriminator{L,T,<:AbstractEncoder{T}}) where {L,T <: Real}
+    for node in d.nodes
+        reset!(node)
+    end
+
+    return nothing
 end

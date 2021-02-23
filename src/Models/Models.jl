@@ -30,7 +30,10 @@ export Discriminator,
   GeneralizedRegressionDiscriminator,
   AltDiscriminator,
   SuperAltDiscriminator,
-  DifferentialDiscriminator
+  DifferentialDiscriminator,
+  kernel, kernel_weight, mix_kernels,
+  FunctionalDiscriminator,
+  add_kernel!
 
 include("MultiDiscriminatorClassifier.jl")
 export MultiDiscriminatorClassifier

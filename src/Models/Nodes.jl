@@ -12,7 +12,8 @@ export AbstractNode,
     GeneralizedRegressionNode,
     AltRegressionNode,
     stepsize,
-    DifferentialNode
+    DifferentialNode,
+    FunctionalNode
 
 # TODO: There is nothing preventing different sized inputs
 abstract type AbstractNode <: AbstractModel end
@@ -205,6 +206,10 @@ function train!(node::AltRegressionNode, X::UInt, y::Float64)
     nothing
 end
 
+# function train_mse!(node::AltRegressionNode, X::UInt, y::float64)
+#     nothing
+# end
+
 # Specialization for the generic methods
 
 function predict(node::AltRegressionNode, X::Vector{UInt}; kargs...)
@@ -257,5 +262,26 @@ function train!(node::DifferentialNode, X::Vector{UInt}, y::AbstractVector{Float
         train!(node, x, target)
     end
 end
+
+# =========================== Functional Gradient ============================ #
+struct FunctionalNode <: AbstractRegressionNode
+    memory::Dict{UInt,Float64}
+end
+
+FunctionalNode() = FunctionalNode(Dict{UInt,Float64}())
+
+function predict(node::FunctionalNode, X::UInt)
+    return get(node.memory, X, zero(Float64))
+end
+
+function train!(node::FunctionalNode, X::UInt, y::Float64)
+    weight = get(node.memory, X, zero(Float64))
+    
+    node.memory[X] = weight + y
+
+    return nothing
+end
+
+reset!(node::FunctionalNode) = empty!(node.memory)
 
 end
