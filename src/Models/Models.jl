@@ -33,7 +33,9 @@ export Discriminator,
   DifferentialDiscriminator,
   kernel, kernel_weight, mix_kernels,
   FunctionalDiscriminator,
-  add_kernel!
+  add_kernel!,
+  MultiFunctionalDiscriminator,
+  min_mse_loss
 
 include("MultiDiscriminatorClassifier.jl")
 export MultiDiscriminatorClassifier

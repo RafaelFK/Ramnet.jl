@@ -4,6 +4,8 @@ using ..Encoders
 
 using Base.Iterators:zip
 
+using StaticArrays
+
 # TODO: Allow the instantiation without the specification of width (Could be
 #       determined from the training data) 
 struct Discriminator{P <: AbstractPartitioner,T <: AbstractNode} <: AbstractModel
@@ -501,4 +503,91 @@ function reset!(d::FunctionalDiscriminator{L,T,<:AbstractEncoder{T}}) where {L,T
     end
 
     return nothing
+end
+
+# ======================= Functional (Multidimensional) ====================== #
+# ---------------------------------------------------------------------------- #
+
+struct MultiFunctionalDiscriminator{D,T <: Real,E <: AbstractEncoder{T}}
+    input_len::Int
+    n::Int
+    η::Float64
+    encoder::E
+    segments::Vector{Int}
+    offsets::Vector{Int}
+    nodes::Vector{MultiFunctionalNode{D}}
+end
+    
+
+function MultiFunctionalDiscriminator{D}(input_len::Int, n::Int, η::Float64, encoder::E, partitioner::Function; seed::Union{Nothing,Int}=nothing, kargs...) where {D,T <: Real,E <: AbstractEncoder{T}}
+    max_tuple_size = (UInt == UInt32) ? 32 : 64
+    (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
+
+    res = resolution(encoder)
+
+    indices = partitioner(input_len, res, n; seed)
+    segments, offsets = indices_to_segment_offset(indices, input_len, res)
+
+    nodes = [MultiFunctionalNode{D}(; kargs...) for _ in 1:cld(input_len * res, n)]
+
+    MultiFunctionalDiscriminator{D,T,E}(input_len, n, η, encoder, segments, offsets, nodes)
+end
+    
+function MultiFunctionalDiscriminator{D}(input_len::Int, n::Int, encoder::E; η::Float64=0.1, partitioner::Symbol=:uniform, seed::Union{Nothing,Int}=nothing, kargs...) where {D,T <: Real,E <: AbstractEncoder{T}}
+    if partitioner == :uniform
+        p_func = uniform_random_tuples
+    elseif partitioner == :significance
+        p_func = significance_aware_random_tuples
+    else
+        throw(DomainError(partitioner, "Unknown partitioning"))
+    end
+
+    MultiFunctionalDiscriminator{D}(input_len, n, η, encoder, p_func; seed, kargs...)
+end
+
+function add_kernel!(d::MultiFunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, weight::StaticArray{Tuple{D},Float64,1}) where {D,T <: Real}
+    length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
+    
+    for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+        train!(node, encode(d.encoder, x, segments, offsets), weight)
+    end
+
+    return nothing
+end
+
+function predict(d::MultiFunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, x::AbstractVector{T}) where {D,T <: Real}
+    cum_weight = zero(MVector{D,Float64})
+
+    for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+        key = encode(d.encoder, x, segments, offsets)
+        weight = predict(node, key)
+
+        cum_weight += weight
+    end
+
+    return cum_weight ./ length(d.nodes)
+end
+
+function predict(d::MultiFunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {D,T <: Real}
+    [predict(d, x) for x in eachcol(X)]
+end
+
+    # Reset all nodes of the network (but keep the partitioning)
+function reset!(d::MultiFunctionalDiscriminator{L,T,<:AbstractEncoder{T}}) where {L,T <: Real}
+    for node in d.nodes
+        reset!(node)
+    end
+    
+    return nothing
+end
+    
+function min_mse_loss(d::MultiFunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, y::AbstractVector{<:StaticArray{Tuple{D},Float64,1}}; epochs=1) where {D,T <: Real}
+    indices = collect(1:length(y))
+    for _ in 1:epochs
+        for i in shuffle!(indices)
+            add_kernel!(d, view(X, :, i), d.η * (y[i] - predict(d, view(X, :, i))))
+        end
+    end
+
+    nothing
 end

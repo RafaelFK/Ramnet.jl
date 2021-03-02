@@ -1,5 +1,7 @@
 module Nodes
 
+using StaticArrays
+
 import ..AbstractModel, ..train!, ..predict
 
 export AbstractNode,
@@ -13,7 +15,8 @@ export AbstractNode,
     AltRegressionNode,
     stepsize,
     DifferentialNode,
-    FunctionalNode
+    FunctionalNode,
+    MultiFunctionalNode
 
 # TODO: There is nothing preventing different sized inputs
 abstract type AbstractNode <: AbstractModel end
@@ -283,5 +286,26 @@ function train!(node::FunctionalNode, X::UInt, y::Float64)
 end
 
 reset!(node::FunctionalNode) = empty!(node.memory)
+
+# ============== Functional Gradient (Multidimensional version) ============== #
+struct MultiFunctionalNode{D} <: AbstractRegressionNode
+    memory::Dict{UInt,MVector{D,Float64}}
+end
+
+MultiFunctionalNode{D}() where {D} = MultiFunctionalNode{D}(Dict{UInt,MVector{D,Float64}}())
+
+function predict(node::MultiFunctionalNode{D}, X::UInt) where {D}
+    return get(node.memory, X, zero(MVector{D,Float64}))
+end
+
+function train!(node::MultiFunctionalNode{D}, X::UInt, y::StaticArray{Tuple{D},Float64,1}) where {D}
+    weight = get!(node.memory, X, zero(MVector{D,Float64}))
+    
+    node.memory[X] = weight + y
+
+    return nothing
+end
+
+reset!(node::MultiFunctionalNode) = empty!(node.memory)
 
 end
