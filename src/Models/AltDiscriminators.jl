@@ -4,9 +4,13 @@ using ..AltNodes
 using ..Partitioners: partition, indices_to_segment_offset
 using ..Encoders
 
+import ..AbstractModel, ..train!, ..predict, ..reset!
+
 using StaticArrays
 
-struct Discriminator{D,N <: AbstractNode{D},T,E <: AbstractEncoder{T}}
+using Base.Iterators:zip
+
+struct Discriminator{D,N <: AbstractNode{D},T,E <: AbstractEncoder{T}} <: AbstractModel
     input_len::Int
     n::Int
     encoder::E
@@ -16,7 +20,7 @@ struct Discriminator{D,N <: AbstractNode{D},T,E <: AbstractEncoder{T}}
     nodes::Vector{N}
 end
 
-function Discriminator{D,N}(input_len::Int, n::Int, encoder::E, partitioner::Symbol; seed::Union{Nothing,Int}=nothing, kargs...) where {D,N,T,E <: AbstractEncoder{T}}
+function Discriminator{D,N}(input_len::Int, n::Int, encoder::E, partitioner::Symbol=:uniform_random; seed::Union{Nothing,Int}=nothing, kargs...) where {D,N,T,E <: AbstractEncoder{T}}
     max_tuple_size = (UInt == UInt32) ? 32 : 64
     (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
 
@@ -55,8 +59,26 @@ function train!(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T}}, x:
     train!(d, x, SizedVector{D}(y))
 end
 
+function train!(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, Y::AbstractMatrix{Float64}) where {D,T}
+    for (x, y) in zip(eachcol(X), eachcol(Y))
+        train!(d, x, y)
+    end
+end
+
+function train!(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}, y::AbstractVector{Float64}) where {D,T}
+    for (x, target) in zip(eachcol(X), y)
+        train!(d, x, target)
+    end
+end
+
 function predict(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T}}, X::AbstractMatrix{T}) where {D,T}
-  [predict(d, x) for x in eachcol(X)]
+    out = MMatrix{D,size(X, 2),Float64}(undef)
+
+    for (i, x) in zip(axes(out, 2), eachcol(X))
+        out[:, i] = predict(d, x)
+    end
+
+    out
 end
 
 ## Specialized functions
@@ -82,7 +104,7 @@ function predict(d::Discriminator{D,RegressionNode{D},T,<:AbstractEncoder{T}}, x
         running_numerator .+= el.value
 
         if node.γ != 1.0
-            running_denominator .+= (1 - node.γ.^count) / (1 - node.γ)
+            running_denominator .+= @. (1 - node.γ^el.count) / (1 - node.γ)
         else
             running_denominator .+= el.count
         end
