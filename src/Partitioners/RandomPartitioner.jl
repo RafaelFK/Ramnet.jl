@@ -1,5 +1,5 @@
 using Random
-using Base.Iterators: enumerate
+using Base.Iterators:enumerate
 
 struct RandomPartitioner <: AbstractPartitioner
     width::Int
@@ -57,21 +57,21 @@ function random_tuples(len::Int, n::Int; seed=Union{Nothing,Int} = nothing)
 end
 
 # TODO: indices length must match input_len times res
-function indices_to_segment_offset(indices::AbstractVector{Int}, input_len::Int, res::Int)
-    len = input_len * res
+# function indices_to_segment_offset(indices::AbstractVector{Int}, input_len::Int, res::Int)
+#     len = input_len * res
     
-    segments = Vector{Int}(undef, len)
-    offsets  = Vector{Int}(undef, len)
+#     segments = Vector{Int}(undef, len)
+#     offsets  = Vector{Int}(undef, len)
 
-    for (e, i) in enumerate(indices)
-        s, offset = fldmod(i - 1, res)
+#     for (e, i) in enumerate(indices)
+#         s, offset = fldmod(i - 1, res)
 
-        segments[e] = s + 1
-        offsets[e] = offset
-    end
+#         segments[e] = s + 1
+#         offsets[e] = offset
+#     end
 
-    return segments, offsets
-end
+#     return segments, offsets
+# end
 
 function random_tuples_segment_offset(input_len::Int, res::Int; seed::Union{Nothing,Int}=nothing)
     !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
@@ -120,7 +120,7 @@ function significance_aware_random_tuples(input_len::Int, res::Int, n::Int; seed
             by=last
         ))
 
-    len = input_len * res
+            len = input_len * res
 
     indices = Vector{Int}(undef, len)
     out = 1

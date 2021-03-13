@@ -43,10 +43,78 @@ export RandomPartitioner,
     random_tuples,
     random_tuples_segment_offset,
     uniform_random_tuples,
-    significance_aware_random_tuples,
-    indices_to_segment_offset
+    significance_aware_random_tuples
+    # indices_to_segment_offset
 
 include("LinearPartitioner.jl")
 export LinearPartitioner
+
+# ============================================================================ #
+# ------------------------- Simplifying partitioning ------------------------- #
+
+partition(scheme::Symbol, args...; kargs...) = partition(Val(scheme), args...; kargs...)
+
+function partition(::Val{S}, args...; kargs...) where {S}
+    throw(DomainError(S, "unknown partitioning scheme"))
+end
+
+function partition(::Val{:uniform_random}, input_len::Int, res::Int, ::Int; seed::Union{Nothing,Int}=nothing)
+    !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
+    input_len ≤ 0 && throw(DomainError(input_len, "Input length must be greater then zero"))
+
+    rng = isnothing(seed) ? MersenneTwister() : MersenneTwister(seed) 
+    
+    len = input_len * res
+    
+    return randperm(rng, len)
+end
+
+function partition(::Val{:significance_aware_random}, input_len::Int, res::Int, n::Int; seed::Union{Nothing,Int}=nothing)
+    !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
+    input_len ≤ 0 && throw(DomainError(input_len, "Input length must be greater then zero"))
+
+    rng = isnothing(seed) ? MersenneTwister() : MersenneTwister(seed) 
+    
+    data = first.(sort(
+            shuffle(
+                rng,
+                collect(enumerate(repeat(1:res, input_len)))
+            );
+            by=last
+        ))
+
+    len = input_len * res
+
+    indices = Vector{Int}(undef, len)
+    out = 1
+    for i in 1:len
+            indices[out] = data[i]
+
+        out += res
+    if out > len
+            out = (out % len) + 1
+        end
+    end
+
+    return indices
+end
+
+function indices_to_segment_offset(indices::AbstractVector{Int}, input_len::Int, res::Int)
+    len = input_len * res
+    
+    segments = Vector{Int}(undef, len)
+    offsets  = Vector{Int}(undef, len)
+
+    for (e, i) in enumerate(indices)
+        s, offset = fldmod(i - 1, res)
+
+        segments[e] = s + 1
+        offsets[e] = offset
+    end
+
+    return segments, offsets
+end
+
+export indices_to_segment_offset
 
 end

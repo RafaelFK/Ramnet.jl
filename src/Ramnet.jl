@@ -1,5 +1,7 @@
 module Ramnet
 
+function reset! end
+
 include("Utils.jl")
 
 include("Encoders/Encoders.jl")
