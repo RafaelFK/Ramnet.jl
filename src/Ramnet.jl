@@ -11,6 +11,8 @@ include("Partitioners/Partitioners.jl")
 using Ramnet.Partitioners
 export partition, RandomPartitioner, random_partitioning
 
+include("Loss/Loss.jl")
+
 include("Models/Models.jl")
 using Ramnet.Models
 export train!, predict

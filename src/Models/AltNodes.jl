@@ -4,7 +4,7 @@ using StaticArrays
 
 import ..AbstractModel, ..train!, ..predict, ..reset!
 
-export AbstractNode, RegressionNode
+export AbstractNode, RegressionNode, FunctionalNode
 
 abstract type AbstractNode{D} <: AbstractModel end
 
@@ -14,6 +14,7 @@ reset!(node::N) where {N <: AbstractNode} = empty!(node.memory)
 predict(node::N, X::UInt) where {N <: AbstractNode} = get(node.memory, X, zero(eltype(N)))
 
 # ============================== Concrete types ============================== #
+# ------------------------------ Regression Node ----------------------------- #
 struct RegressionNodeMemoryElement{D}
     count::MVector{D,Int}
     value::MVector{D,Float64}
@@ -45,6 +46,25 @@ function train!(node::RegressionNode{D}, X::UInt, y::StaticArray{Tuple{D},Float6
     el.count .+= 1
     el.value .*= node.γ
     el.value .+= y 
+
+    nothing
+end
+
+# ------------------------------ Functional Node ----------------------------- #
+struct FunctionalNode{D} <: AbstractNode{D}
+    memory::Dict{UInt,MVector{D,Float64}}
+end
+
+function FunctionalNode{D}() where {D}
+    FunctionalNode{D}(Dict{UInt,MVector{D,Float64}}())
+end
+
+Base.eltype(::Type{FunctionalNode{D}}) where {D} = MVector{D,Float64}
+
+function train!(node::FunctionalNode{D}, X::UInt, y::StaticArray{Tuple{D},Float64,1}) where {D}
+    value = get!(node.memory, X, zero(eltype(FunctionalNode{D})))
+
+    value .+= y
 
     nothing
 end
