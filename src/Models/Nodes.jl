@@ -2,7 +2,7 @@ module Nodes
 
 using StaticArrays
 
-import ..AbstractModel, ..train!, ..predict
+import ..AbstractModel, ..train!, ..predict, ..reset!
 
 export AbstractNode,
     AbstractClassificationNode,

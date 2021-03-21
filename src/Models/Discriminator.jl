@@ -49,7 +49,7 @@ const BitDiscriminator        = Discriminator{RandomPartitioner,DictNode{BitVect
 const BleachingDiscriminator  = Discriminator{RandomPartitioner,AccNode} # This should be the default classification discriminator
 
 # RegressionDiscriminator = Discriminator{RandomPartitioner,RegressionNode}
-# const RegressionDiscriminator = Discriminator{RandomPartitioner,FastRegressionNode}
+const RegressionDiscriminator = Discriminator{RandomPartitioner,FastRegressionNode}
 const FastRegressionDiscriminator = Discriminator{RandomPartitioner,FastRegressionNode}
 # GeneralizedRegressionDiscriminator = Discriminator{RandomPartitioner,GeneralizedRegressionNode}
 
@@ -206,7 +206,7 @@ function SuperAltDiscriminator(input_len::Int, n::Int, encoder::E; partitioner::
     SuperAltDiscriminator(input_len, n, encoder, p_func; style, seed, default, kargs...)
 end
 
-const RegressionDiscriminator = SuperAltDiscriminator
+# const RegressionDiscriminator = SuperAltDiscriminator
 
 function train!(d::SuperAltDiscriminator{S,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::Float64) where {S,T <: Real}
     length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))

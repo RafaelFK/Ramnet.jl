@@ -2,6 +2,8 @@ module Models
 
 import ..reset!
 
+using ..Loss
+
 export train!,
   predict,
   predict_response
@@ -46,4 +48,5 @@ export MultiDiscriminatorClassifier
 include("AltNodes.jl")
 
 include("AltDiscriminators.jl")
+
 end

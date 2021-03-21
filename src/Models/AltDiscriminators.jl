@@ -95,6 +95,20 @@ function predict(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T},L},
     out
 end
 
+function reset!(d::Discriminator; seed::Union{Nothing,Int}=nothing)
+    if !isnothing(seed)
+        res = resolution(d.encoder)
+        indices = partition(d.partitioner, d.input_len, res, d.n; seed)
+        d.segments, d.offsets = indices_to_segment_offset(indices, d.input_len, res)
+    end
+
+    for node in d.nodes
+        reset!(node)
+    end
+
+    nothing
+end
+
 # =========================== Specialized functions ========================== #
 # ------------------------- Regression Discriminator ------------------------- #
 function Base.show(io::IO, d::Discriminator{D,RegressionNode{D},T,E,L}) where {D,T,E,L}
