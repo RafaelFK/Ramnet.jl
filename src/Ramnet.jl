@@ -13,6 +13,8 @@ export partition, RandomPartitioner, random_partitioning
 
 include("Loss/Loss.jl")
 
+include("Optimizers/Optimizers.jl")
+
 include("Models/Models.jl")
 using Ramnet.Models
 export train!, predict

@@ -5,6 +5,7 @@ using ..Partitioners: partition, indices_to_segment_offset
 using ..Encoders
 
 using ..Loss
+using ..Optimizers
 
 import ..AbstractModel, ..train!, ..predict, ..reset!
 
@@ -12,20 +13,21 @@ using StaticArrays
 
 using Base.Iterators:zip
 
-# TODO: Add Epochs
-struct Discriminator{D,N <: AbstractNode{D},T,E <: AbstractEncoder{T},L <: AbstractLoss} <: AbstractModel
+abstract type AbstractDiscriminator{D,N <: AbstractNode{D},T,E <: AbstractEncoder{T}} <: AbstractModel end
+
+struct RegressionDiscriminator{D,T,E} <: AbstractDiscriminator{D,RegressionNode{D},T,E}
     input_len::Int
     n::Int
     encoder::E
     partitioner::Symbol
-    loss::L
-    η::Float64
     segments::Vector{Int}
     offsets::Vector{Int}
-    nodes::Vector{N}
+    nodes::Vector{RegressionNode{D}}
+    running_numerator::Vector{Float64}
+    running_denominator::Vector{Float64}
 end
 
-function Discriminator{D,N}(input_len::Int, n::Int, encoder::E, loss::L, η::Float64, partitioner::Symbol=:uniform_random; seed::Union{Nothing,Int}=nothing, kargs...) where {D,N,T,E <: AbstractEncoder{T},L}
+function RegressionDiscriminator{D}(input_len::Int, n::Int, encoder::E, partitioner::Symbol=:uniform_random; seed::Union{Nothing,Int}=nothing, γ::Float64=1.0) where {D,T,E <: AbstractEncoder{T}}
     max_tuple_size = (UInt == UInt32) ? 32 : 64
     (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
 
@@ -34,59 +36,61 @@ function Discriminator{D,N}(input_len::Int, n::Int, encoder::E, loss::L, η::Flo
     indices = partition(partitioner, input_len, res, n; seed)
     segments, offsets = indices_to_segment_offset(indices, input_len, res)
 
-    nodes = [N(;kargs...) for _ in 1:cld(input_len * res, n)]
+    nodes = [RegressionNode{D}(;γ) for _ in 1:cld(input_len * res, n)]
 
-    Discriminator{D,N,T,E,L}(input_len, n, encoder, partitioner, loss, η, segments, offsets, nodes)
+    RegressionDiscriminator{D,T,E}(input_len, n, encoder, partitioner, segments, offsets, nodes, zeros(Float64, D), zeros(Float64, D))
 end
 
-## Aliases and convenience constructors
-const RegressionDiscriminator{D} = Discriminator{D,RegressionNode{D}}
-const FunctionalDiscriminator{D} = Discriminator{D,FunctionalNode{D}}
-
-function Discriminator{D,RegressionNode{D}}(input_len::Int, n::Int, encoder::E, partitioner::Symbol=:uniform_random; seed::Union{Nothing,Int}=nothing, γ=1.0) where {D,T,E <: AbstractEncoder{T}}
-    Discriminator{D,RegressionNode{D}}(input_len, n, encoder, NoneLoss(), 0.0, partitioner; seed, γ)
+# TODO: Add Epochs
+struct FunctionalDiscriminator{D,T,E <: AbstractEncoder{T}} <: AbstractDiscriminator{D,FunctionalNode{D},T,E}
+    input_len::Int
+    n::Int
+    encoder::E
+    partitioner::Symbol
+    segments::Vector{Int}
+    offsets::Vector{Int}
+    nodes::Vector{FunctionalNode{D}}
+    cum_weight::Vector{Float64}
 end
 
-function Discriminator{D,FunctionalNode{D}}(input_len::Int, n::Int, encoder::E, partitioner::Symbol=:uniform_random; η, seed::Union{Nothing,Int}=nothing, loss::L=SquaredError()) where {D,T,E <: AbstractEncoder{T},L}
-    Discriminator{D,FunctionalNode{D}}(input_len, n, encoder, loss, η, partitioner; seed)
+function FunctionalDiscriminator{D}(input_len::Int, n::Int, encoder::E, partitioner::Symbol=:uniform_random; seed::Union{Nothing,Int}=nothing) where {D,T,E <: AbstractEncoder{T}}
+    max_tuple_size = (UInt == UInt32) ? 32 : 64
+    (n > max_tuple_size) && throw(DomainError(n, "Tuple size may not be greater then $max_tuple_size"))
+
+    res = resolution(encoder)
+
+    indices = partition(partitioner, input_len, res, n; seed)
+    segments, offsets = indices_to_segment_offset(indices, input_len, res)
+
+    nodes = [FunctionalNode{D}() for _ in 1:cld(input_len * res, n)]
+
+    FunctionalDiscriminator{D,T,E}(input_len, n, encoder, partitioner, segments, offsets, nodes, zeros(Float64, D))
 end
 
 # ============================= Generic functions ============================ #
-function Base.show(io::IO, d::Discriminator{D,N,T,E,L}) where {D,N,T,E,L}
-    print(
-        io,
-        """Discriminator
-        ├ Node: $(N)
-        ├ Input length: $(d.input_len)
-        ├ Tuple size: $(d.n)
-        ├ Encoder type: $(E)
-        ├ Partitioning scheme: $(d.partitioner)
-        └ Loss function: $(L)"""
-    )
-end
 
-function train!(d::Discriminator{1,<:AbstractNode{1},T,<:AbstractEncoder{T},L}, x::AbstractVector{T}, y::Float64) where {T,L}
+function train!(d::M, x::AbstractVector{T}, y::Float64) where {T,M <: AbstractDiscriminator{1,<:AbstractNode{1},T,<:AbstractEncoder{T}}}
     train!(d, x, SA_F64[y])
 end
 
-function train!(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T},L}, x::AbstractVector{T}, y::AbstractVector{Float64}) where {D,T,L}
+function train!(d::M, x::AbstractVector{T}, y::AbstractVector{Float64}) where {D,T,M <: AbstractDiscriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T}}}
     train!(d, x, SizedVector{D}(y))
 end
 
-function train!(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T},L}, X::AbstractMatrix{T}, Y::AbstractMatrix{Float64}) where {D,T,L}
+function train!(d::M, X::AbstractMatrix{T}, Y::AbstractMatrix{Float64}) where {D,T,M <: AbstractDiscriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T}}}
     for (x, y) in zip(eachcol(X), eachcol(Y))
         train!(d, x, y)
     end
 end
 
-function train!(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T},L}, X::AbstractMatrix{T}, y::AbstractVector{Float64}) where {D,T,L}
+function train!(d::M, X::AbstractMatrix{T}, y::AbstractVector{Float64}) where {D,T,M <: AbstractDiscriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T}}}
     for (x, target) in zip(eachcol(X), y)
         train!(d, x, target)
     end
 end
 
-function predict(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T},L}, X::AbstractMatrix{T}) where {D,T,L}
-    out = MMatrix{D,size(X, 2),Float64}(undef)
+function predict(d::M, X::AbstractMatrix{T}) where {D,T,M <: AbstractDiscriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T}}}
+    out = Matrix{Float64}(undef, D, size(X, 2))
 
     for (i, x) in zip(axes(out, 2), eachcol(X))
         out[:, i] = predict(d, x)
@@ -95,7 +99,7 @@ function predict(d::Discriminator{D,<:AbstractNode{D},T,<:AbstractEncoder{T},L},
     out
 end
 
-function reset!(d::Discriminator; seed::Union{Nothing,Int}=nothing)
+function reset!(d::M; seed::Union{Nothing,Int}=nothing) where {M <: AbstractDiscriminator}
     if !isnothing(seed)
         res = resolution(d.encoder)
         indices = partition(d.partitioner, d.input_len, res, d.n; seed)
@@ -111,7 +115,8 @@ end
 
 # =========================== Specialized functions ========================== #
 # ------------------------- Regression Discriminator ------------------------- #
-function Base.show(io::IO, d::Discriminator{D,RegressionNode{D},T,E,L}) where {D,T,E,L}
+
+function Base.show(io::IO, d::RegressionDiscriminator{D,T,E}) where {D,T,E}
     print(
         io,
         """Regression Discriminator
@@ -123,7 +128,7 @@ function Base.show(io::IO, d::Discriminator{D,RegressionNode{D},T,E,L}) where {D
     )
 end
 
-function train!(d::Discriminator{D,RegressionNode{D},T,<:AbstractEncoder{T},L}, x::AbstractVector{T}, y::StaticArray{Tuple{D},Float64,1}) where {D,T,L}
+function train!(d::RegressionDiscriminator{D,T,E}, x::AbstractVector{T}, y::StaticArray{Tuple{D},Float64,1}) where {D,T,E}
     length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
     
     for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
@@ -134,62 +139,107 @@ function train!(d::Discriminator{D,RegressionNode{D},T,<:AbstractEncoder{T},L}, 
 end
 
 # TODO: Have γ be a parameter and make a specialized version for the case γ = 1.0
-function predict(d::Discriminator{D,RegressionNode{D},T,<:AbstractEncoder{T},L}, x::AbstractVector{T}) where {D,T,L}
-    running_numerator = zero(MVector{D,Float64})
-    running_denominator = zero(MVector{D,Float64})
+function predict(d::RegressionDiscriminator{D,T,E}, x::AbstractVector{T}) where {D,T,E}
+    fill!(d.running_numerator, 0.0)
+    fill!(d.running_denominator, 0.0)
 
     for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
         key = encode(d.encoder, x, segments, offsets)
         el = predict(node, key)
 
-        running_numerator .+= el.value
+        d.running_numerator .+= el.value
 
         if node.γ != 1.0
-            running_denominator .+= @. (1 - node.γ^el.count) / (1 - node.γ)
+            @. d.running_denominator += (1 - node.γ^el.count) / (1 - node.γ)
         else
-            running_denominator .+= el.count
+            @. d.running_denominator += el.count
         end
     end
 
-    return running_denominator == 0 ? zero(MVector{D,Float64}) : running_numerator ./ running_denominator
+    return map(d.running_numerator, d.running_denominator) do num, den
+        den == 0.0 ? 0.0 : num / den
+    end
 end
 
 # ------------------------- Functional Discriminator ------------------------- #
-function Base.show(io::IO, d::Discriminator{D,FunctionalNode{D},T,E,L}) where {D,T,E,L}
+function Base.show(io::IO, d::FunctionalDiscriminator{D,T,E}) where {D,T,E}
     print(
         io,
-        """Functional Discriminator
+        """Functional Discriminator{$D}
         ├ Input length: $(d.input_len)
         ├ Tuple size: $(d.n)
-        ├ η: $(d.η)
         ├ Encoder type: $(E)
-        ├ Partitioning scheme: $(d.partitioner)
-        └ Loss function: $(L)"""
+        └ Partitioning scheme: $(d.partitioner)"""
     )
 end
 
-function train!(d::Discriminator{D,FunctionalNode{D},T,<:AbstractEncoder{T},L}, x::AbstractVector{T}, y::StaticArray{Tuple{D},Float64,1}) where {D,T,L}
-    length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
-    
-    y_pred = predict(d, x)
+# function train!(d::FunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, y::StaticArray{Tuple{D},Float64,1}) where {D,T}
+#     length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
+
+#     y_pred = predict(d, x) |> SizedVector{D}
+#     for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
+#         train!(node, encode(d.encoder, x, segments, offsets), -d.η * grad(d.loss, y, y_pred))
+#     end
+
+#     return nothing
+# end
+
+function train!(d::FunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, x::AbstractVector{T}, grad::StaticArray{Tuple{D},Float64,1}) where {D,T}
     for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
-        train!(node, encode(d.encoder, x, segments, offsets), -d.η * grad(d.loss, y, y_pred))
+        train!(
+            node,
+            encode(d.encoder, x, segments, offsets),
+            -grad
+        )
     end
+end
+
+function train!(d::FunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, opt::FunctionalOptimizer{L}, x::AbstractVector{T}, y::StaticArray{Tuple{D},Float64,1}) where {D,T,L}
+    length(x) != d.input_len && throw(DimensionMismatch("expected x's length to be $(d.input_len). Got $(length(x))"))
+
+    y_pred = predict(d, x)
+    gradient = -learning_rate(opt) * Optimizers.grad(opt, y, y_pred)
+
+    train!(d, x, gradient)
 
     return nothing
 end
 
-function predict(d::Discriminator{D,FunctionalNode{D},T,<:AbstractEncoder{T},L}, x::AbstractVector{T}) where {D,T,L}
-    cum_weight = zero(MVector{D,Float64})
+# TODO: Deprecate this train methods that take as input an optimizer. Make a optimize function in the Optimizers module
+# The following three functions could be generalized if the regression discriminator would also take an optimizer
+function train!(d::FunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, opt::FunctionalOptimizer{L}, x::AbstractVector{T}, y::Float64) where {D,T,L}
+    train!(d, opt, x, SA_F64[y])
+end
+
+function train!(d::FunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, opt::FunctionalOptimizer{L}, X::AbstractMatrix{T}, Y::AbstractMatrix{Float64}) where {D,T,L}
+    for _ in 1:max_epochs(opt)
+        for (x, y) in zip(eachcol(X), eachcol(Y))
+            train!(d, opt, x, y)
+        end
+    end
+end
+
+function train!(d::FunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, opt::FunctionalOptimizer{L}, X::AbstractMatrix{T}, y::AbstractVector{Float64}) where {D,T,L}
+    for _ in 1:max_epochs(opt)
+        for (x, target) in zip(eachcol(X), y)
+            train!(d, opt, x, target)
+        end
+    end
+end
+
+function predict(d::FunctionalDiscriminator{D,T,<:AbstractEncoder{T}}, x::AbstractVector{T}) where {D,T}
+    fill!(d.cum_weight, 0.0)
 
     for (node, segments, offsets) in zip(d.nodes, Iterators.partition(d.segments, d.n), Iterators.partition(d.offsets, d.n))
         key = encode(d.encoder, x, segments, offsets)
+        
+        # I could avoid creating temp arrays here 
         weight = predict(node, key)
 
-        cum_weight += weight
+        d.cum_weight .+= weight
     end
 
-    return cum_weight ./ length(d.nodes)
+    return d.cum_weight ./ length(d.nodes)
 end
 
 

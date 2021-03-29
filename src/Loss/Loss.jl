@@ -12,6 +12,6 @@ struct NoneLoss <: AbstractLoss end
 
 struct SquaredError <: AbstractLoss end
 
-grad(::SquaredError, y_true, y_pred) = y_pred .- y_true
+grad(::SquaredError, y_true, y_pred) = y_pred - y_true
 
 end
