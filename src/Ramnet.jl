@@ -11,10 +11,6 @@ include("Partitioners/Partitioners.jl")
 using Ramnet.Partitioners
 export partition, RandomPartitioner, random_partitioning
 
-include("Loss/Loss.jl")
-
-include("Optimizers/Optimizers.jl")
-
 include("Models/Models.jl")
 using Ramnet.Models
 export train!, predict
@@ -34,5 +30,9 @@ export Discriminator,
   min_mse_loss
 
 export MultiDiscriminatorClassifier
+
+include("Loss/Loss.jl")
+
+include("Optimizers/Optimizers.jl")
 
 end

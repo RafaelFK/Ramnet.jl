@@ -2,8 +2,8 @@ module Models
 
 import ..reset!
 
-using ..Loss
-using ..Optimizers
+# using ..Loss
+# using ..Optimizers
 
 export train!,
   predict,

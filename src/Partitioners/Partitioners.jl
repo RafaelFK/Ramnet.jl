@@ -58,7 +58,7 @@ function partition(::Val{S}, args...; kargs...) where {S}
     throw(DomainError(S, "unknown partitioning scheme"))
 end
 
-function partition(::Val{:uniform_random}, input_len::Int, res::Int, ::Int; seed::Union{Nothing,Int}=nothing)
+function partition(::Val{:uniform_random}, input_len::Int, res::Int, ::Int; seed::Union{Nothing,UInt}=nothing)
     !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
     input_len ≤ 0 && throw(DomainError(input_len, "Input length must be greater then zero"))
 
@@ -69,7 +69,7 @@ function partition(::Val{:uniform_random}, input_len::Int, res::Int, ::Int; seed
     return randperm(rng, len)
 end
 
-function partition(::Val{:significance_aware_random}, input_len::Int, res::Int, n::Int; seed::Union{Nothing,Int}=nothing)
+function partition(::Val{:significance_aware_random}, input_len::Int, res::Int, n::Int; seed::Union{Nothing,UInt}=nothing)
     !isnothing(seed) && seed < 0 && throw(DomainError(seed, "Seed must be non-negative"))
     input_len ≤ 0 && throw(DomainError(input_len, "Input length must be greater then zero"))
 
